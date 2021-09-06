@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "geBygWUHZjTS3GnJA3iXwvkRJpB1yUO4AtJIqdxgDi1LEYPTMV3WrT3bXYBJx0iytwk8X6oDJNvOregKEvncxA==",
+  "success": true,
+  "projectFilePath": "/Users/ericchang/Documents/UFL/2021_Fall/COP5615-DistOperSysPrinc/COP5612_DOS/projects/projects.fsproj",
+  "expectedPackageFiles": [
+    "/Users/ericchang/.nuget/packages/fsharp.core/5.0.0/fsharp.core.5.0.0.nupkg.sha512"
+  ],
+  "logs": []
+}

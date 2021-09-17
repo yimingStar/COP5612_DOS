@@ -1,5 +1,3 @@
-#r "nuget: Akka, 1.4.24"
-#r "nuget: Akka.Remote, 1.4.24"
-#r "nuget: Akka.Configuration, 1.0.5835.36887"
-#r "nuget: Akka.FSharp, 1.4.24"
-#r "nuget: Akka.TestKit, 1.4.24"
+#r "nuget: Akka"
+#r "nuget: Akka.Remote"
+#r "nuget: Akka.FSharp"

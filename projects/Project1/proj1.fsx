@@ -55,8 +55,8 @@ type CoinMining =
         | :? MiningInputs as param ->
             let prefix = param.Prefix
             let leadZero = param.LeadZeros
+            printfn "%A" param
             
-
         | _ ->  failwith "unknown mining inputs"
 
 type ActorGenerator = // Class

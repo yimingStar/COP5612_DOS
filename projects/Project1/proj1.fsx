@@ -1,7 +1,9 @@
+
 #time "on"
 #load "packages.fsx"
 
 open System
+open System.Security.Cryptography
 open Akka.Actor
 open Akka.Configuration
 open Akka.FSharp
@@ -29,7 +31,7 @@ let config =
                 }
                 remote.helios.tcp {
                     hostname = localhost
-                    port = 0
+                    port = 5566
                 }
             }
         }"
@@ -48,6 +50,11 @@ type MiningInputs = {
 
 let system = ActorSystem.Create("proj1Server", config)
 
+let sha256Hasher = SHA256Managed.Create()
+let hashWithSha256(originalStr: string) =
+    let hashedBytes = originalStr |> System.Text.Encoding.UTF8.GetBytes |> (new SHA256Managed()).ComputeHash
+    let hashedString = hashedBytes |> Array.map (fun (x : byte) -> System.String.Format("{0:X2}", x)) |> String.concat System.String.Empty
+    hashedString.ToLower()
 type CoinMining = 
     inherit Actor
     override x.OnReceive message =
@@ -55,8 +62,9 @@ type CoinMining =
         | :? MiningInputs as param ->
             let prefix = param.Prefix
             let leadZero = param.LeadZeros
-            printfn "%A" param
-            
+            let mutable checkString = prefix + Guid.NewGuid().ToString()
+            let hashedString = checkString |> hashWithSha256
+            printfn "%s is hashed into %s" checkString hashedString
         | _ ->  failwith "unknown mining inputs"
 
 type ActorGenerator = // Class
@@ -109,7 +117,7 @@ let leadZerosCheck(argv: string[]) =
 
 let InputParams: Inputs = {
     LeadZeros = leadZerosCheck(argv) 
-    NumberOfActors = 10
+    NumberOfActors = 1
     Prefix = "yimingchang;"
 }
 // Akka props https://doc.akka.io/api/akka/current/akka/actor/Props.html

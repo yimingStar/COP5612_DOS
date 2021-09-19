@@ -36,7 +36,7 @@ let config =
             }
         }"
 
-type Inputs = {
+type ArgvInputs = {
     LeadZeros: int
     NumberOfActors: int
     Prefix: string
@@ -48,63 +48,25 @@ type MiningInputs = {
     ActorName: string
 }
 
-let system = ActorSystem.Create("proj1Server", config)
-
-let sha256Hasher = SHA256Managed.Create()
-let hashWithSha256(originalStr: string) =
-    let hashedBytes = originalStr |> System.Text.Encoding.UTF8.GetBytes |> (new SHA256Managed()).ComputeHash
-    let hashedString = hashedBytes |> Array.map (fun (x : byte) -> System.String.Format("{0:X2}", x)) |> String.concat System.String.Empty
-    hashedString.ToLower()
-type CoinMining = 
-    inherit Actor
-    override x.OnReceive message =
-        match message with
-        | :? MiningInputs as param ->
-            let prefix = param.Prefix
-            let leadZero = param.LeadZeros
-            let mutable checkString = prefix + Guid.NewGuid().ToString()
-            let hashedString = checkString |> hashWithSha256
-            printfn "%s is hashed into %s" checkString hashedString
-        | _ ->  failwith "unknown mining inputs"
-
-type ActorGenerator = // Class
-    // reference https://doc.akka.io/docs/akka/2.4/java/untyped-actors.html
-    // F# type using https://docs.microsoft.com/en-us/dotnet/fsharp/language-reference/inheritance
-    // match expression https://docs.microsoft.com/en-us/dotnet/fsharp/language-reference/match-expressions
-    // Type symbols and operators https://docs.microsoft.com/en-us/dotnet/fsharp/language-reference/symbol-and-operator-reference/ 
-    inherit Actor
-    override x.OnReceive message =
-        match message with
-        | :? Inputs as param -> 
-            let totalActors = param.NumberOfActors * param.LeadZeros
-            // let productMode = if param.ModeStr = "0" then false else true
-            // create actors  
-            for i = 1 to totalActors do
-                // spawn the actors
-                let name = "remote-actor-" + Convert.ToString(i)
-                let remoteActor = system.ActorOf(Props(typedefof<CoinMining>), name)
-                let minerInput: MiningInputs = {
-                    LeadZeros = param.LeadZeros
-                    Prefix = param.Prefix
-                    ActorName = name
-                }
-                remoteActor <! minerInput
-            
-        | _ ->  failwith "unknown input"
+type bitCoin = {
+    randomStr: string
+    hashedStr: string
+}
 
 let printStart courseInfo projectInfo =
     sprintf "Course %s %s" courseInfo projectInfo
-
 // start progect1 program
 let courseInfo = "[COP5612] DOS"
 let projectInfo = "Project 1"
 let startMsg = printStart courseInfo projectInfo
 let lang = "F#" 
-printfn "Start program of %s with %s" startMsg lang
 
+printfn "Start program of %s with %s" startMsg lang
+let system = ActorSystem.Create("proj1Server", config)
 let argv = fsi.CommandLineArgs
 printfn "input arguments: %A" (argv) 
 
+// Checking functions
 let leadZerosCheck(argv: string[]) = 
     let mutable validLeadZeros = 0
     try
@@ -115,11 +77,58 @@ let leadZerosCheck(argv: string[]) =
         | :? System.IndexOutOfRangeException as ex -> printfn "Exception! %A " (ex.Message)
     validLeadZeros
 
-let InputParams: Inputs = {
+// Hashed Functions
+let hashWithSha256(originalStr: string) =
+    let hashedBytes = originalStr |> System.Text.Encoding.UTF8.GetBytes |> (new SHA256Managed()).ComputeHash
+    let hashedString = hashedBytes |> Array.map (fun (x : byte) -> System.String.Format("{0:X2}", x)) |> String.concat System.String.Empty
+    hashedString.ToLower()
+
+// Miners actor function
+let CoinMining(mailbox: Actor<obj>) msg =
+    let sender = mailbox.Sender()
+    printfn "actor %s, recieve sender %s, msg %s" mailbox.Self.Path.Name (sender.Path.Name.ToString()) (msg.ToString())
+    match box msg with
+    | :? MiningInputs as param ->
+        let prefix = param.Prefix
+        let leadZero = param.LeadZeros // use to find the bitCoin
+        let mutable checkString = prefix + Guid.NewGuid().ToString()
+        let hashedString = checkString |> hashWithSha256
+        printfn "%s is hashed into %s" checkString hashedString
+        let coin: bitCoin = {
+            randomStr = checkString
+            hashedStr = hashedString
+        }
+        sender <! coin
+        // if hashedString.Length > 2 then
+    | _ ->  failwith "unknown mining inputs"
+
+
+let mainActions (mailbox: Actor<obj>) msg =
+    match box msg with
+    | :? ArgvInputs as param ->
+        // create actor
+        for i = 1 to param.NumberOfActors do
+        let name = "mine-actor-" + Convert.ToString(i)
+        let mineActor = spawn system name (actorOf2 CoinMining)
+        let minerInput: MiningInputs = {
+            LeadZeros = param.LeadZeros
+            Prefix = param.Prefix
+            ActorName = name
+        }
+        mineActor <! minerInput
+    | :? bitCoin as param ->
+        // found bit coin
+        printfn "%A" param
+        // stop all actors
+        
+    | _ ->  failwith "unknown mining inputs"
+
+let argvParams: ArgvInputs = {
     LeadZeros = leadZerosCheck(argv) 
     NumberOfActors = 1
     Prefix = "yimingchang;"
 }
-// Akka props https://doc.akka.io/api/akka/current/akka/actor/Props.html
-let createActors = system.ActorOf(Props(typedefof<ActorGenerator>), "actor-generator")
-createActors <! InputParams
+
+let mainActor = "main-actor"
+let mainController = spawn system mainActor (actorOf2 mainActions)
+mainController <! argvParams 

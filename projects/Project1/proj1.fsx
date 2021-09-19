@@ -55,7 +55,6 @@ type BitCoin = {
 
 // ActionsType
 let StopType = 0
-let StartType = 1
 type ActorActions = {
     Cmdtype: int
     Content: string
@@ -72,7 +71,7 @@ let lang = "F#"
 printfn "Start program of %s with %s" startMsg lang
 
 let system = ActorSystem.Create("proj1Server", config)
-let mutable bitCoinStr = "" 
+let mutable bitCoinStr = null 
 let argv = fsi.CommandLineArgs
 printfn "input arguments: %A" (argv) 
 
@@ -114,7 +113,7 @@ let CoinMining(mailbox: Actor<obj>) msg =
                 miningLoop()
 
         | :? ActorActions as param ->
-            if param.Cmdtype = 0 then ()
+            if param.Cmdtype = StopType then ()
         | _ ->  (failwith "unknown mining inputs")
     
     miningLoop()
@@ -140,12 +139,12 @@ let mainActions (mailbox: Actor<obj>) msg =
         mineActor <! minerInput
     | :? BitCoin as param ->
         // found bit coin
-        if bitCoinStr.Length = 0 then
+        if isNull bitCoinStr then
             makeBitCoinString(param.RandomStr, param.HashedStr)
 
         // stop all actors
         let stopCmd: ActorActions = {
-            Cmdtype = 0
+            Cmdtype = StopType
             Content = "stop mining"
         }
         system.ActorSelection("/user/*") <! stopCmd
@@ -158,7 +157,7 @@ let mainActions (mailbox: Actor<obj>) msg =
 
 let argvParams: ArgvInputs = {
     LeadZeros = leadZerosCheck(argv) 
-    NumberOfActors = 100
+    NumberOfActors = leadZerosCheck(argv)*1000
     Prefix = "yimingchang;"
 }
 

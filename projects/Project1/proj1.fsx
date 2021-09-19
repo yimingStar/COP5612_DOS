@@ -48,9 +48,17 @@ type MiningInputs = {
     ActorName: string
 }
 
-type bitCoin = {
-    randomStr: string
-    hashedStr: string
+type BitCoin = {
+    RandomStr: string
+    HashedStr: string
+}
+
+// ActionsType
+let StopType = 0
+let StartType = 1
+type ActorActions = {
+    Cmdtype: int
+    Content: string
 }
 
 let printStart courseInfo projectInfo =
@@ -62,7 +70,9 @@ let startMsg = printStart courseInfo projectInfo
 let lang = "F#" 
 
 printfn "Start program of %s with %s" startMsg lang
+
 let system = ActorSystem.Create("proj1Server", config)
+let mutable bitCoinStr = "" 
 let argv = fsi.CommandLineArgs
 printfn "input arguments: %A" (argv) 
 
@@ -85,25 +95,37 @@ let hashWithSha256(originalStr: string) =
 
 // Miners actor function
 let CoinMining(mailbox: Actor<obj>) msg =
-    let sender = mailbox.Sender()
-    printfn "actor %s, recieve sender %s, msg %s" mailbox.Self.Path.Name (sender.Path.Name.ToString()) (msg.ToString())
-    match box msg with
-    | :? MiningInputs as param ->
-        let prefix = param.Prefix
-        let leadZero = param.LeadZeros // use to find the bitCoin
-        let mutable checkString = prefix + Guid.NewGuid().ToString()
-        let hashedString = checkString |> hashWithSha256
-        printfn "%s is hashed into %s" checkString hashedString
-        let coin: bitCoin = {
-            randomStr = checkString
-            hashedStr = hashedString
-        }
-        sender <! coin
-        // if hashedString.Length > 2 then
-    | _ ->  failwith "unknown mining inputs"
+    let rec miningLoop() =
+        let sender = mailbox.Sender()
+        // printfn "actor %s, recieve sender %s, msg %s" mailbox.Self.Path.Name (sender.Path.Name.ToString()) (msg.ToString())
+        match box msg with
+        | :? MiningInputs as param ->
+            let prefix = param.Prefix
+            let checkString = String.replicate param.LeadZeros "0" // use to find the bitCoin
+            let mutable randomString = prefix + Guid.NewGuid().ToString()
+            let hashedString = randomString |> hashWithSha256
+            if hashedString.StartsWith(checkString) then
+                let coin: BitCoin = {
+                    RandomStr = randomString
+                    HashedStr = hashedString
+                }
+                sender <! coin
+            else
+                miningLoop()
 
+        | :? ActorActions as param ->
+            if param.Cmdtype = 0 then ()
+        | _ ->  (failwith "unknown mining inputs")
+    
+    miningLoop()
+
+let makeBitCoinString(s:string, sub: string) =
+    bitCoinStr <- s + " " + sub
+    printfn "%s" bitCoinStr
 
 let mainActions (mailbox: Actor<obj>) msg =
+    let sender = mailbox.Sender()
+    // printfn "main actor %s, recieve sender %s, msg %s" mailbox.Self.Path.Name (sender.Path.Name.ToString()) (msg.ToString())
     match box msg with
     | :? ArgvInputs as param ->
         // create actor
@@ -116,19 +138,32 @@ let mainActions (mailbox: Actor<obj>) msg =
             ActorName = name
         }
         mineActor <! minerInput
-    | :? bitCoin as param ->
+    | :? BitCoin as param ->
         // found bit coin
-        printfn "%A" param
+        if bitCoinStr.Length = 0 then
+            makeBitCoinString(param.RandomStr, param.HashedStr)
+
         // stop all actors
+        let stopCmd: ActorActions = {
+            Cmdtype = 0
+            Content = "stop mining"
+        }
+        system.ActorSelection("/user/*") <! stopCmd
         
-    | _ ->  failwith "unknown mining inputs"
+    | :? ActorActions as param ->
+        if param.Cmdtype = 0 then
+            system.Terminate() |> ignore
+    | _ ->  ()
+    
 
 let argvParams: ArgvInputs = {
     LeadZeros = leadZerosCheck(argv) 
-    NumberOfActors = 1
+    NumberOfActors = 100
     Prefix = "yimingchang;"
 }
 
 let mainActor = "main-actor"
 let mainController = spawn system mainActor (actorOf2 mainActions)
 mainController <! argvParams 
+
+system.WhenTerminated.Wait()

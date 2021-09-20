@@ -5,7 +5,6 @@
 #load "ProjectModules.fsx"
 
 open System
-open System.Security.Cryptography
 open Akka.Actor
 open Akka.Configuration
 open Akka.FSharp
@@ -20,17 +19,17 @@ let startMsg = printStart courseInfo projectInfo
 let lang = "F#" 
 
 printfn "Start program of %s with %s" startMsg lang
-// let masterConfig =
-//     Configuration.parse
-//         @"akka {
-//             actor.provider = ""Akka.Remote.RemoteActorRefProvider, Akka.Remote""
-//             remote.helios.tcp {
-//                 hostname = localhost
-//                 port = 9000
-//             }
-//         }"
+let masterConfig =
+    Configuration.parse
+        @"akka {
+            actor.provider = ""Akka.Remote.RemoteActorRefProvider, Akka.Remote""
+            remote.helios.tcp {
+                hostname = localhost
+                port = 9000
+            }
+        }"
 
-let system = ActorSystem.Create("proj1Master")
+let system = ActorSystem.Create("proj1Master", masterConfig)
 let mutable bitCoinStr = null
 let mutable argvParams: ArgvInputs = {
     LeadZeros = 0
@@ -88,20 +87,21 @@ let mainActions (mailbox: Actor<obj>) msg =
                 mineActor <! minerInput
 
         else if param.Cmdtype = 2 then
-            for i = 1 to argvParams.NumberOfActors do
-            // remote system connected
-            // 1. spawn middleman -> use for termination
-                let remoteName = "remote-miner-" + Convert.ToString(i)
-                let minerInput: MiningInputs = {
-                    LeadZeros = argvParams.LeadZeros
-                    Prefix = argvParams.Prefix
-                    ActorName = remoteName
-                }
-                let remoteAddress = Address.Parse("akka.tcp://proj1Slave@localhost:9001")
-                let mineRemoteActor = spawne system remoteName <@ actorOf2 CoinMining @> 
-                                            [SpawnOption.Deploy (Deploy.None.WithScope(RemoteScope(remoteAddress)))]                        
-                mineRemoteActor <! minerInput
-    | _ ->  ()
+            printfn "get remote message %s, start spawning %d" (msg.ToString()) argvParams.NumberOfActors
+            // for i = 1 to argvParams.NumberOfActors do
+            //     let remoteName = "remote-miner-" + Convert.ToString(i)
+            //     let minerInput: MiningInputs = {
+            //         LeadZeros = 3
+            //         Prefix = "yimingchang;"
+            //         ActorName = remoteName
+            //     }
+            //     let remoteAddress = Address.Parse(param.Content)
+                // let remoteAddress = Address.Parse("akka.tcp://proj1Slave@localhost:9001")
+            
+            let remoteAddress = Address.Parse(param.Content)
+            let mineRemoteActor = spawne system "test" <@ actorOf2 TryIt @> [SpawnOption.Deploy (Deploy.None.WithScope(RemoteScope(remoteAddress)))]                        
+            mineRemoteActor <! "1"
+    | _ ->  printfn "%A" msg
 
 let mainActor = "main-actor"
 let mainController = spawn system mainActor (actorOf2 mainActions)
@@ -109,7 +109,7 @@ let mainController = spawn system mainActor (actorOf2 mainActions)
 let setInputs(argv: string[]) = 
     let result: ArgvInputs = {
         LeadZeros = leadZerosCheck(argv) 
-        NumberOfActors = leadZerosCheck(argv)*100
+        NumberOfActors = leadZerosCheck(argv)*1
         Prefix = "yimingchang;"
     }
     argvParams <- result
@@ -121,6 +121,7 @@ let startLocalActorsCmd: ActorActions = {
     Content = "start Local Actors"
 }
 
-mainController <! startLocalActorsCmd
+// mainController <! startLocalActorsCmd
 
+mainController <! "starts"
 system.WhenTerminated.Wait()

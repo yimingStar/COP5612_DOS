@@ -23,9 +23,9 @@ type BitCoin = {
 
 // ActionsType
 module ActionType =
-    [<Literal>]
     let Stop = -1
     let StartLocals = 1
+    let RemoteArrives = 2
 
 type ActorActions = {
     Cmdtype: int
@@ -61,3 +61,7 @@ let CoinMining(mailbox: Actor<obj>) msg =
             if param.Cmdtype = ActionType.Stop then ()
         | _ ->  (failwith "unknown mining inputs")
     miningLoop()
+
+let TryIt(mailbox: Actor<obj>) msg =
+    let sender = mailbox.Sender()
+    printfn "recieve sender %s, msg %s" (sender.Path.Name.ToString()) (msg.ToString())

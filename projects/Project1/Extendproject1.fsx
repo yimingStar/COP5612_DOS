@@ -1,31 +1,21 @@
 #time "on"
 #load "packages.fsx"
+#load "ProjectModules.fsx"
 
 open System
 open Akka.Actor
-open Akka.Configuration
 open Akka.FSharp
+open ProjectModules
 
 let config =
     Configuration.parse
         @"akka {
-            log-config-on-start : on
-            stdout-loglevel : DEBUG
-            loglevel : ERROR
-            actor {
-                provider = ""Akka.Remote.RemoteActorRefProvider, Akka.Remote""
-                debug : {
-                    receive : on
-                    autoreceive : on
-                    lifecycle : on
-                    event-stream : on
-                    unhandled : on
-                }
-                remote.helios.tcp {
-                    hostname = localhost
-                    port = 0
-                }
+            actor.provider = ""Akka.Remote.RemoteActorRefProvider, Akka.Remote""
+            remote.helios.tcp {
+                hostname = localhost
+                port = 9001
             }
         }"
 
-let system = ActorSystem.Create("proj1Clients", config)
+let system = ActorSystem.Create("proj1Slave", config)
+system.WhenTerminated.Wait()

@@ -1,36 +1,10 @@
-#load "packages.fsx"
+#load "Packages.fsx"
+#load "ProjectTypes.fsx"
 
 open System
 open System.Security.Cryptography
 open Akka.FSharp
-
-type ArgvInputs = {
-    LeadZeros: int
-    NumberOfActors: int
-    Prefix: string
-}
-
-type MiningInputs = {
-    LeadZeros: int
-    Prefix: string
-    ActorName: string
-}
-
-type BitCoin = {
-    RandomStr: string
-    HashedStr: string
-}
-
-// ActionsType
-module ActionType =
-    let Stop = 0
-    let StartLocal = 1
-    let RemoteArrives = 2
-
-type ActorActions = {
-    Cmdtype: int
-    Content: string
-}
+open ProjectTypes
 
 let hashWithSha256(originalStr: string) =
     let hashedBytes = originalStr |> System.Text.Encoding.UTF8.GetBytes |> (new SHA256Managed()).ComputeHash
@@ -61,3 +35,23 @@ let CoinMining(mailbox: Actor<obj>) msg =
             if param.Cmdtype = ActionType.Stop then ()
         | _ ->  (failwith "unknown mining inputs")
     miningLoop()
+
+let getLocalIP =
+    let mutable ip = "" 
+    try
+        let localHost = System.Net.Dns.GetHostName()
+        let getIP = System.Net.Dns.GetHostEntry(localHost).AddressList |> Array.find (fun x -> x.AddressFamily.ToString() = "InterNetwork")
+        ip <- getIP.ToString()
+    with ex -> 
+        printfn "%A" ex
+        ip <- "localhost"
+    ip
+
+let getStartProjMsg = 
+    // start progect1 program
+    let courseInfo = "[COP5612] DOS"
+    let projectInfo = "Project 1 Mine Coins"
+    let startMsg = sprintf "Start course %s %s" courseInfo projectInfo
+    startMsg
+
+let toList s = Set.fold (fun l se -> se::l) [] s

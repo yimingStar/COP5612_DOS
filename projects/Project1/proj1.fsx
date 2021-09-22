@@ -53,7 +53,6 @@ let makeBitCoinString(s:string, sub: string) =
 
 let mainActions (mailbox: Actor<obj>) msg =
     let sender = mailbox.Sender()
-    // printfn "main actor %s, recieve sender %s, msg %s" mailbox.Self.Path.Name (sender.Path.Name.ToString()) (msg.ToString())
     match box msg with
     | :? ArgvInputs as param ->
         // create actor
@@ -79,7 +78,6 @@ let mainActions (mailbox: Actor<obj>) msg =
 
             // printfn "%A" clientSet
             for clientHost in Set.toList(clientSet) do
-                printfn "%s" clientHost
                 let clientMainActor = system.ActorSelection(clientHost + "user/main-actor")
                 clientMainActor <! stopSystemCmd
             
@@ -87,8 +85,8 @@ let mainActions (mailbox: Actor<obj>) msg =
 
     | :? ActorActions as param ->
         // printfn "Actor command received %A" param
-        if param.Cmdtype = ActionType.Stop then
-            system.Terminate() |> ignore
+        if param.Cmdtype = ActionType.Stop then ()
+            // system.Terminate() |> ignore
 
         else if param.Cmdtype = ActionType.StartLocal then 
             for i = 1 to argvParams.NumberOfActors do
@@ -140,4 +138,4 @@ let StartLocalActors: ActorActions = {
 let startMsg = sprintf("%s, %s: %s") getStartProjMsg ",start server on ip" hostIP
 mainController <! startMsg 
 mainController <! StartLocalActors
-system.WhenTerminated.Wait()
+System.Console.ReadLine() |> ignore

@@ -29,8 +29,8 @@ let mainActions (mailbox: Actor<obj>) msg =
     // printfn "main actor %s, recieve sender %s, msg %s" mailbox.Self.Path.Name (sender.Path.Name.ToString()) (msg.ToString())
     match box msg with
     | :? ActorActions as param ->
-        if param.Cmdtype = ActionType.Stop then
-            system.Terminate().Start() |> ignore
+        if param.Cmdtype = ActionType.Stop then ()
+            // system.Terminate().Start() |> ignore
     | _ -> 
         printfn "%A" msg
 
@@ -51,4 +51,4 @@ let masterHostIP = if argv.Length < 2 then "127.0.0.1" else argv.[1]
 let masterActorStr = sprintf "akka.tcp://proj1Master@%s:5566/user/main-actor" masterHostIP 
 let masterServer = system.ActorSelection(masterActorStr)
 masterServer <! arriveMessage
-system.WhenTerminated
+System.Console.ReadLine() |> ignore

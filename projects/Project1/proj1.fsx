@@ -118,7 +118,7 @@ let mainController = spawn system mainActor (actorOf2 mainActions)
 let setInputs(argv: string[]) = 
     let inputs: ArgvInputs = {
         LeadZeros = leadZerosCheck(argv) 
-        NumberOfActors = 8
+        NumberOfActors = 4
         Prefix = "yimingchang;"
     }
     argvParams <- inputs

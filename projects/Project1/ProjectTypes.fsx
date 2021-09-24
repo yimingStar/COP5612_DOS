@@ -5,9 +5,8 @@ type ArgvInputs = {
 }
 
 type MiningInputs = {
-    LeadZeros: int
+    LeadZerosStr: string
     Prefix: string
-    ActorName: string
 }
 
 type BitCoin = {
@@ -19,7 +18,9 @@ type BitCoin = {
 module ActionType =
     let Stop = 0
     let StartLocal = 1
-    let RemoteArrives = 2
+    let SendArrive = 2
+    let RemoteArrives = 3
+    let CoinFound = 4
 
 type ActorActions = {
     Cmdtype: int

@@ -6,6 +6,7 @@ open System.Security.Cryptography
 open Akka.FSharp
 open ProjectTypes
 
+
 let hashWithSha256(originalStr: string) =
     let hashedBytes = originalStr |> System.Text.Encoding.UTF8.GetBytes |> (new SHA256Managed()).ComputeHash
     let hashedString = hashedBytes |> Array.map (fun (x : byte) -> System.String.Format("{0:X2}", x)) |> String.concat System.String.Empty
@@ -13,16 +14,21 @@ let hashWithSha256(originalStr: string) =
 
 let CoinMining(mailbox: Actor<obj>) msg =
     let rec miningLoop() =
-        let sender = mailbox.Sender()
         // printfn "actor %A" mailbox.Self.Path
         // printfn "recieve sender %s, msg %s" (sender.Path.Name.ToString()) (msg.ToString())
         match box msg with
         | :? MiningInputs as param ->
+            
+            // random from GUI and random a length for the subString
             let prefix = param.Prefix
-            let checkString = String.replicate param.LeadZeros "0" // use to find the bitCoin
+            // let randomStartIdx = Random().Next(0, 10)
+            // let randomLength = Random().Next(16, 26)
+            // let mutable randomString = prefix + Guid.NewGuid().ToString().Substring(randomStartIdx, randomLength)
             let mutable randomString = prefix + Guid.NewGuid().ToString()
             let hashedString = randomString |> hashWithSha256
-            if hashedString.StartsWith(checkString) then
+            
+            if hashedString.StartsWith(param.LeadZerosStr) then
+                let sender = mailbox.Sender()
                 let coin: BitCoin = {
                     RandomStr = randomString
                     HashedStr = hashedString
@@ -32,7 +38,7 @@ let CoinMining(mailbox: Actor<obj>) msg =
                 miningLoop()
 
         | :? ActorActions as param ->
-            if param.Cmdtype = ActionType.Stop then ()
+            if param.Cmdtype = ActionType.CoinFound then ()
         | _ ->  (failwith "unknown mining inputs")
     miningLoop()
 

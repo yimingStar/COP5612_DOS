@@ -1,22 +1,27 @@
-
-
 #time "on"
-#load "packages.fsx"
+#load "Packages.fsx"
 #load "ProjectTypes.fsx"
 #load "UnitFunctions.fsx"
 
 open System
+open System.Diagnostics
 open Akka.Actor
 open Akka.Configuration
 open Akka.FSharp
 open ProjectTypes
 open UnitFunctions
 
+let proc = Process.GetCurrentProcess()
+let realTime = Stopwatch.StartNew()
+
 let hostIP = getLocalIP
 let port = "5566" 
 let masterConfig =
     ConfigurationFactory.ParseString(
             @"akka {
+                coordinated-shutdown.terminate-actor-system = on
+                coordinated-shutdown.run-by-actor-system-terminate = on
+                coordinated-shutdown.run-by-actor-system-terminate = on
                 actor.provider = remote
                 remote.helios.tcp {
                     hostname = " + hostIP + "
@@ -36,6 +41,7 @@ let mutable argvParams: ArgvInputs = {
 
 let argv = fsi.CommandLineArgs
 printfn "input arguments: %A" (argv) 
+let mutable totalMiners = 0
 // function checks input
 let leadZerosCheck(argv: string[]) = 
     let mutable validLeadZeros = 0
@@ -49,70 +55,59 @@ let leadZerosCheck(argv: string[]) =
 
 let makeBitCoinString(s:string, sub: string) =
     bitCoinStr <- s + " " + sub
-    printfn "%s" bitCoinStr
+    printfn "\n%s\n" bitCoinStr
 
 let mainActions (mailbox: Actor<obj>) msg =
     let sender = mailbox.Sender()
     match box msg with
     | :? ArgvInputs as param ->
-        // create actor
-        for i = 1 to argvParams.NumberOfActors do
+        // create local actors
+        let minerInput: MiningInputs = {
+            LeadZerosStr = String.replicate param.LeadZeros "0"
+            Prefix = param.Prefix
+        }
+        
+        totalMiners <- param.NumberOfActors
+        for i = 1 to totalMiners do
             let name = "mine-local-" + Convert.ToString(i)
             let mineActor = spawn system name (actorOf2 CoinMining)
-            let minerInput: MiningInputs = {
-                LeadZeros = param.LeadZeros
-                Prefix = param.Prefix
-                ActorName = name
-            }
             mineActor <! minerInput
 
     | :? BitCoin as param ->
         // found bit coin
         if isNull bitCoinStr then
             makeBitCoinString(param.RandomStr, param.HashedStr)
-            let stopSystemCmd: ActorActions = {
-                Cmdtype = ActionType.Stop
-                Content = "stop mining"
+            let coinFindCmd: ActorActions = {
+                Cmdtype = ActionType.CoinFound
+                Content = "Coin Found"
             }
-            system.ActorSelection("/user/miner*") <! stopSystemCmd
-
-            // printfn "%A" clientSet
-            for clientHost in Set.toList(clientSet) do
-                let clientMainActor = system.ActorSelection(clientHost + "user/main-actor")
-                clientMainActor <! stopSystemCmd
             
-            system.ActorSelection("/user/main-actor") <! stopSystemCmd
-
+            // broadcasting found msg
+            system.ActorSelection("/user/main-actor") <! coinFindCmd
+            for clientHost in Set.toList(clientSet) do
+                printfn "broadcast Coin found message to %A" clientHost
+                let clientMainActor = system.ActorSelection(clientHost + "user/main-actor")
+                clientMainActor <! coinFindCmd
+            
     | :? ActorActions as param ->
-        // printfn "Actor command received %A" param
-        if param.Cmdtype = ActionType.Stop then ()
+        if param.Cmdtype = ActionType.CoinFound then
+            printfn "Recieve coin found signal, stop mining"
+            for i = 1 to totalMiners do
+                let name = "mine-local-" + Convert.ToString(i)
+                system.ActorSelection(sprintf "/user/%s" name) <! PoisonPill.Instance
+            
+            realTime.Stop()
+            let cpuTime = proc.TotalProcessorTime.TotalMilliseconds
+            printfn "CPU Time = %dms" (int64 cpuTime)
+            printfn "Real Time = %dms" realTime.ElapsedMilliseconds
+            
+            system.ActorSelection(sprintf "/user/main-actor") <! PoisonPill.Instance
             // system.Terminate() |> ignore
 
-        else if param.Cmdtype = ActionType.StartLocal then 
-            for i = 1 to argvParams.NumberOfActors do
-            let name = "miner-local-actor_" + Convert.ToString(i)
-            let mineActor = spawn system name (actorOf2 CoinMining)
-            let minerInput: MiningInputs = {
-                LeadZeros = argvParams.LeadZeros
-                Prefix = argvParams.Prefix
-                ActorName = name
-            }
-            mineActor <! minerInput
-
         else if param.Cmdtype = ActionType.RemoteArrives then
-            printfn "Remote node [%s] arrived, start spawning " (param.Content)
-            for i = 1 to argvParams.NumberOfActors do
-                let remoteName = "miner-remote-" + clientSet.Count.ToString() + "-actor-" + Convert.ToString(i)
-                let minerInput: MiningInputs = {
-                    LeadZeros = argvParams.LeadZeros
-                    Prefix = argvParams.Prefix
-                    ActorName = remoteName
-                }
-                
-                clientSet <- clientSet.Add(param.Content)
-                let remoteAddress = Address.Parse(param.Content)
-                let mineRemoteActor = spawne system remoteName <@ actorOf2 CoinMining @> [SpawnOption.Deploy (Deploy.None.WithScope(RemoteScope(remoteAddress)))]
-                mineRemoteActor <! minerInput
+            printfn "Remote node [%s] arrived, pass the params to client " (param.Content)
+            clientSet <- clientSet.Add(param.Content)
+            sender <! argvParams
                 
     | _ ->  printfn "%A" msg
 
@@ -123,19 +118,15 @@ let mainController = spawn system mainActor (actorOf2 mainActions)
 let setInputs(argv: string[]) = 
     let inputs: ArgvInputs = {
         LeadZeros = leadZerosCheck(argv) 
-        NumberOfActors = 5
+        NumberOfActors = 8
         Prefix = "yimingchang;"
     }
     argvParams <- inputs
 
 setInputs(argv)
 
-let StartLocalActors: ActorActions = {
-    Cmdtype = ActionType.StartLocal
-    Content = sprintf "akka.tcp://proj1Master@%s:%s/" hostIP port
-}
-
-let startMsg = sprintf("%s, %s: %s") getStartProjMsg ",start server on ip" hostIP
+let startMsg = sprintf("%s, %s: %s") getStartProjMsg "start server on ip" hostIP
 mainController <! startMsg 
-mainController <! StartLocalActors
+mainController <! argvParams
 System.Console.ReadLine() |> ignore
+// system.WhenTerminated.Wait()

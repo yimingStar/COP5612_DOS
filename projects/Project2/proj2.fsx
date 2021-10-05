@@ -42,23 +42,27 @@ let argv = fsi.CommandLineArgs
 printfn "input arguments: %A" (argv) 
 
 inputCheck(argv)
-let setInputs(argv: string[]) = 
-    argvParams <- ArgvInputs(argv.[1] |> int, argv.[2], argv.[3])
+let setInputs(argv: string[]) =
+    let mutable numberOfNodes = argv.[1] |> int
+    if argv.[2] = TopologyType.ThreeD || argv.[2] = TopologyType.ImPThreeD then
+        // round up to cude
+        let cubeRoot = Convert.ToInt32(System.Math.Ceiling(cuberoot(numberOfNodes |> float)))
+        numberOfNodes <- cubeRoot * cubeRoot * cubeRoot   
+    printfn "Number of nodes %d" numberOfNodes
+    argvParams <- ArgvInputs(numberOfNodes, argv.[2], argv.[3])
     
 setInputs(argv)
-
-let createLineNetwork(systemParams: ArgvInputs) =
-    for i = 1 to systemParams.NumberOfNodes do
-        let name = systemParams.Topology + "-" + Convert.ToString(i)
-        let networkNode = spawn system name (actorOf2 NodeFunctions)
-        let nodeParams = NodeParams(i, systemParams, 2, i, 1)
-        networkNode <! nodeParams
 
 let createNetwork(param) =
     match box param with
     | :? ArgvInputs as param ->
-        if param.Topology = TopologyType.LINE then
-            createLineNetwork(param)
+        let maxRecieveCount = 2
+        for i = 1 to param.NumberOfNodes do
+            let name = param.Topology + "-" + Convert.ToString(i)
+            let networkNode = spawn system name (actorOf2 NodeFunctions)
+            let nodeParams = NodeParams(i, param, maxRecieveCount, i, 1)
+            networkNode <! nodeParams
+
     | _ ->  failwith "Invalid input variables to build a network"
 
 createNetwork(argvParams)

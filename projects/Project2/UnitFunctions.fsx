@@ -34,6 +34,17 @@ let creatNeighborSet(nodeId: int, numberOfNodes: int, topology: string) =
         else 
             neiborSet <- neiborSet.Add(nodeId-1)
             neiborSet <- neiborSet.Add(nodeId+1)
+    elif topology = TopologyType.FULL then
+        for i=1 to numberOfNodes do
+            if i <> nodeId then 
+                neiborSet <- neiborSet.Add(i)
+    elif topology = TopologyType.ThreeD || topology = TopologyType.ImPThreeD then
+        // find the boundary of the plane by using 
+        // each x-y plane 
+        let cubeRoot = Convert.ToInt32(cuberoot(numberOfNodes |> float))
+        let squareSize = cubeRoot * cubeRoot
+        let heightLevel = System.Math.Ceiling(nodeId/squareSize)
+        
     neiborSet
 
 let NodeFunctions(mailbox: Actor<obj>) msg =
@@ -60,3 +71,6 @@ let NodeFunctions(mailbox: Actor<obj>) msg =
             
         | _ ->  (failwith "unknown gossip inputs")
     gossipLoop()
+
+let cuberoot (f:float<'m^3>) : float<'m> = 
+    System.Math.Pow(float f, 1.0/3.0) |> LanguagePrimitives.FloatWithMeasure

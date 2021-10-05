@@ -27,6 +27,9 @@ type ArgvInputs =
 module TopologyType =
     let LINE = "Line"
     let FULL = "Full"
+    let ThreeD = "3Dgrid"
+    let ImPThreeD = "Imperfect"
+
 type NodeParams = 
     class
         val NodeIdx: int

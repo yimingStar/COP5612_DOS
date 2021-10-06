@@ -1,9 +1,3 @@
-// type ArgvInputs = {
-//     NumberOfNodes: int
-//     Topology: string
-//     GossipAlgo: string
-// }
-
 type ArgvInputs = 
     class
         val NumberOfNodes: int
@@ -15,14 +9,6 @@ type ArgvInputs =
             GossipAlgo = gossipAlgo
         }
     end
-
-// type NodeParams = {
-//     NodeIdx: int
-//     SystemParams: ArgvInputs
-//     MaxRecieveCount: int
-//     PushSumS: int
-//     PushSumW: int
-// }
 
 module TopologyType =
     let LINE = "Line"

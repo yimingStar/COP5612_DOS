@@ -47,7 +47,8 @@ let setInputs(argv: string[]) =
     if argv.[2] = TopologyType.ThreeD || argv.[2] = TopologyType.ImPThreeD then
         // round up to cude
         let cubeRoot = Convert.ToInt32(System.Math.Ceiling(cuberoot(numberOfNodes |> float)))
-        numberOfNodes <- cubeRoot * cubeRoot * cubeRoot   
+        numberOfNodes <- cubeRoot * cubeRoot * cubeRoot
+        printfn "cubeRoot: %d" cubeRoot    
     printfn "Number of nodes %d" numberOfNodes
     argvParams <- ArgvInputs(numberOfNodes, argv.[2], argv.[3])
     
@@ -78,7 +79,7 @@ sendMessage(argvParams, "test", 1)
 
 realTime.Stop()
 let cpuTime = proc.TotalProcessorTime.TotalMilliseconds
-printfn "CPU Time = %dms" (int64 cpuTime)
-printfn "Real Time = %dms" realTime.ElapsedMilliseconds
+// printfn "CPU Time = %dms" (int64 cpuTime)
+// printfn "Real Time = %dms" realTime.ElapsedMilliseconds
 
 System.Console.ReadLine() |> ignore

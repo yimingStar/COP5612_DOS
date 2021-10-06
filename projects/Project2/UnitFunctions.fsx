@@ -72,7 +72,23 @@ let creatNeighborSet(nodeId: int, numberOfNodes: int, topology: string) =
         // 1 2 3   10 11 12   19 20 21
         // 4 5 6   13 14 15   22 23 24
         // 7 8 9   16 17 18   25 26 27
-         
+
+        // 1 2 3 4       17 18 19 20
+        // 5 6 7 8       21 22 23 24
+        // 9 10 11 12    25 26 27 28
+        // 13 14 15 16   29 30 31 32
+
+        if topology = TopologyType.ImPThreeD then
+            // add a random neighbor
+            let mutable randomNodeId = -1
+            let mutable findRandom = true
+            
+            while findRandom do
+                let r = System.Random()
+                randomNodeId <- r.Next(1, numberOfNodes)
+                if randomNodeId <> nodeId && not (neighborSet.Contains(randomNodeId)) then
+                    findRandom <- false
+            neighborSet <- neighborSet.Add(randomNodeId)
     neighborSet
 
 let NodeFunctions(mailbox: Actor<obj>) msg =
@@ -91,7 +107,7 @@ let NodeFunctions(mailbox: Actor<obj>) msg =
             // create neighborlist
             neighborSet <- creatNeighborSet(
                 nodeParams.NodeIdx, nodeParams.SystemParams.NumberOfNodes, nodeParams.SystemParams.Topology)
-            if nodeParams.NodeIdx = 14 then
+            if nodeParams.NodeIdx = 1 then
                 printfn "node %d neighbors %A" nodeParams.NodeIdx neighborSet
 
         | :? GossipMsg as param ->

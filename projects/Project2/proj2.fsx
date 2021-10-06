@@ -79,7 +79,7 @@ sendMessage(argvParams, "test", 1)
 
 realTime.Stop()
 let cpuTime = proc.TotalProcessorTime.TotalMilliseconds
-printfn "CPU Time = %dms" (int64 cpuTime)
-printfn "Real Time = %dms" realTime.ElapsedMilliseconds
+// printfn "CPU Time = %dms" (int64 cpuTime)
+// printfn "Real Time = %dms" realTime.ElapsedMilliseconds
 
 System.Console.ReadLine() |> ignore

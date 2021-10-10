@@ -33,13 +33,15 @@ type PushSumMsg = {
 
 type SenderType = 
     | STARTSENDER of string * Set<int> * GossipMsg * string
-
+    | UPDATE of Set<int>
+    | SEND
 
 type ReceiveType = 
     | INIT of NodeParams
     | GOSSIP of GossipMsg
     | WAITING of string
     | STOPRECV of string
+    | INFORMFINISH of int
 
 
 

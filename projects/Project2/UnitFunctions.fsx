@@ -1,9 +1,11 @@
 #load "Packages.fsx"
 #load "ProjectTypes.fsx"
+#load "Constants.fsx"
 
 open System
 open Akka.FSharp
 open ProjectTypes
+open Constants
 
 let getLocalIP =
     let mutable ip = "" 
@@ -90,29 +92,3 @@ let creatNeighborSet(nodeId: int, numberOfNodes: int, topology: string) =
                     findRandom <- false
             neighborSet <- neighborSet.Add(randomNodeId)
     neighborSet
-
-let NodeFunctions(mailbox: Actor<obj>) msg =
-    let mutable nodeParams = NodeParams()
-    let mutable recieveCount = 0
-    let sender = mailbox.Sender()
-    
-    let mutable neighborSet = Set.empty
-    let rec gossipLoop() =
-        // printfn "actor %A" mailbox.Self.Path
-        // printfn "recieve sender %s, msg %s" (sender.Path.Name.ToString()) (msg.ToString())
-        match box msg with
-        | :? NodeParams as param ->
-            nodeParams <- param
-            // printfn "recieve  from %s, msg %s" (sender.Path.Name.ToString()) (param.ToString())
-            // create neighborlist
-            neighborSet <- creatNeighborSet(
-                nodeParams.NodeIdx, nodeParams.SystemParams.NumberOfNodes, nodeParams.SystemParams.Topology)
-            if nodeParams.NodeIdx = 1 then
-                printfn "node %d neighbors %A" nodeParams.NodeIdx neighborSet
-
-        | :? GossipMsg as param ->
-            printfn "recieve rumer from %s, msg %s" (sender.Path.Name.ToString()) (param.ToString())
-            recieveCount <- recieveCount + 1
-            
-        | _ ->  (failwith "unknown gossip inputs")
-    gossipLoop()

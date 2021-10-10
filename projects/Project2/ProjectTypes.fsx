@@ -1,5 +1,3 @@
-
-
 type ArgvInputs = 
     class
         val NumberOfNodes: int
@@ -12,6 +10,7 @@ type ArgvInputs =
         }
     end
 
+
 type NodeParams = {
     NodeIdx: int
     SystemParams: ArgvInputs
@@ -20,13 +19,27 @@ type NodeParams = {
     PushSumW: int
 }   
 
+
 type GossipMsg = {
     Content: string
 }
 
 
-type NodeType = 
+type PushSumMsg = {
+    PushSumS: int
+    PushSumW: int
+}
+
+
+type SenderType = 
+    | STARTSENDER of string * Set<int> * GossipMsg * string
+
+
+type ReceiveType = 
     | INIT of NodeParams
     | GOSSIP of GossipMsg
     | WAITING of string
+    | STOPRECV of string
+
+
 

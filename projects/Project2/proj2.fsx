@@ -1,3 +1,4 @@
+open System.Threading
 #time "on"
 #load "Packages.fsx"
 #load "ProjectTypes.fsx"
@@ -50,8 +51,36 @@ let setInputs(argv: string[]) =
         printfn "cubeRoot: %d" cubeRoot    
     printfn "Number of nodes %d" numberOfNodes
     argvParams <- ArgvInputs(numberOfNodes, argv.[2], argv.[3])
-    
-let NodeFunction (nodeMailbox:Actor<NodeType>) = 
+
+let GossipToNeighbor(nodeName: string, neighborSet: Set<int>, msg: GossipMsg, topology: string) = async {
+    printfn "[%s] Start gossiping to neighbor, neighbors %A" nodeName neighborSet
+    let neigborCount = neighborSet.Count
+    let mutable randomNeighborIdx = -1
+    let mutable neigborName = ""
+
+    randomNeighborIdx <- Random().Next(0, neigborCount)
+    let nList = Set.toList(neighborSet)
+    neigborName <- topology + "-" + nList.[randomNeighborIdx].ToString()
+    printfn "neigborName %s" neigborName
+    let nActor = select ("/user/" + string neigborName) system
+    do! Async.Sleep systemLimitParams.roundDuration 
+    nActor <! GOSSIP msg
+}
+
+let randomSenderFunction (nodeMailbox:Actor<SenderType>) =
+    let rec loop () = actor {
+        let! (msg: SenderType) = nodeMailbox.Receive()
+        match msg with
+        | STARTSENDER(nodeName: string, neighborSet:Set<int>, gossipMsg: GossipMsg, topology: string) -> 
+            let selfActor = select ("/user/" + string nodeName) system
+            let task = GossipToNeighbor(nodeName, neighborSet, gossipMsg, topology)
+            Async.RunSynchronously task
+            selfActor <! STARTSENDER(nodeName, neighborSet, gossipMsg, topology) 
+        return! loop ()
+    }
+    loop()
+
+let NodeFunction (nodeMailbox:Actor<ReceiveType>) = 
     let mutable nodeParams: NodeParams = {
         NodeIdx = -1
         SystemParams = ArgvInputs(-1, "", "")
@@ -63,9 +92,9 @@ let NodeFunction (nodeMailbox:Actor<NodeType>) =
     let mutable nodeName = "unset"
     let mutable neighborSet = Set.empty
     let mutable selfActor = select ("") system
-
+    
     let rec loop () = actor {
-        let! (msg: NodeType) = nodeMailbox.Receive()
+        let! (msg: ReceiveType) = nodeMailbox.Receive()
         let sender = nodeMailbox.Sender()
 
         match msg with
@@ -76,18 +105,27 @@ let NodeFunction (nodeMailbox:Actor<NodeType>) =
 
             selfActor <- select ("/user/" + string nodeName) system
             selfActor <! WAITING "READY"
-        | GOSSIP(_) ->
+
+        | GOSSIP(gossipMsg: GossipMsg) ->
+            let topology = nodeParams.SystemParams.Topology
             let senderName = sender.Path.Name.ToString()
             if nodeParams.SystemParams.GossipAlgo = AlgoType.RANDOM then
-                if recvCount < systemLimitParams.randomLimit then
-                    // if recvCount = 1 then 
-                    //     // start to be a sender
-                    recvCount <- recvCount + 1
+                recvCount <- recvCount + 1
+                if recvCount <= systemLimitParams.randomLimit then
+                    if recvCount = 1 then 
+                        // start to be a sender actor
+                        let senderName = nodeName + "-random-sender" 
+                        let senderActor = spawn system senderName randomSenderFunction
+                        senderActor <! STARTSENDER(senderName, neighborSet, gossipMsg, topology) 
                     let actionStr = sprintf "recieve rumor msg from %s, receive count %d" senderName recvCount
                     selfActor <! WAITING actionStr
-                    
+                else
+                    selfActor <! STOPRECV ""
         | WAITING str ->
-            printfn "WAITING state, prev action - %s" str
+            printfn "[%s] WAITING state, prev action - %s" nodeName str
+        | STOPRECV str ->
+            // inform neighbors
+            printfn "[%s] receive all the rumors" nodeName
         return! loop ()
     }
     loop ()
@@ -124,9 +162,6 @@ inputCheck(argv)
 setInputs(argv)
 createNetwork(argvParams)
 
-sendMessage(argvParams, "test", 1)
-sendMessage(argvParams, "test", 1)
-sendMessage(argvParams, "test", 1)
 sendMessage(argvParams, "test", 1)
 
 realTime.Stop()

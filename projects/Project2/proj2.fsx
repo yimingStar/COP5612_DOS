@@ -34,7 +34,6 @@ let proc = Process.GetCurrentProcess()
 let realTime = Stopwatch.StartNew()
 let system = System.create "proj2Master" masterConfig
 
-
 let inputCheck(argv: string[]) = 
     try
         if argv.Length < 4 then
@@ -42,10 +41,6 @@ let inputCheck(argv: string[]) =
     with 
         | :? System.IndexOutOfRangeException as ex -> printfn "Exception! %A " (ex.Message)
 
-let argv = fsi.CommandLineArgs
-printfn "input arguments: %A" (argv) 
-
-inputCheck(argv)
 let setInputs(argv: string[]) =
     let mutable numberOfNodes = argv.[1] |> int
     if argv.[2] = TopologyType.ThreeD || argv.[2] = TopologyType.ImPThreeD then
@@ -56,8 +51,6 @@ let setInputs(argv: string[]) =
     printfn "Number of nodes %d" numberOfNodes
     argvParams <- ArgvInputs(numberOfNodes, argv.[2], argv.[3])
     
-setInputs(argv)
-
 let NodeFunction (nodeMailbox:Actor<NodeType>) = 
     let mutable nodeParams: NodeParams = {
         NodeIdx = -1
@@ -87,15 +80,17 @@ let NodeFunction (nodeMailbox:Actor<NodeType>) =
             let senderName = sender.Path.Name.ToString()
             if nodeParams.SystemParams.GossipAlgo = AlgoType.RANDOM then
                 if recvCount < systemLimitParams.randomLimit then
+                    // if recvCount = 1 then 
+                    //     // start to be a sender
                     recvCount <- recvCount + 1
                     let actionStr = sprintf "recieve rumor msg from %s, receive count %d" senderName recvCount
                     selfActor <! WAITING actionStr
+                    
         | WAITING str ->
             printfn "WAITING state, prev action - %s" str
         return! loop ()
     }
     loop ()
-
 
 let createNetwork(param) =
     match box param with
@@ -115,14 +110,19 @@ let createNetwork(param) =
 
     | _ ->  failwith "Invalid input variables to build a network"
 
-createNetwork(argvParams)
-
 let sendMessage(systemParams: ArgvInputs, content: string, startIdx: int) =
     let gossipMsg: GossipMsg = {
         Content = content
     }
     let startNodesName = systemParams.Topology + "-" + Convert.ToString(startIdx)
     system.ActorSelection(sprintf "/user/%s" startNodesName) <! GOSSIP gossipMsg
+
+let argv = fsi.CommandLineArgs
+printfn "input arguments: %A" (argv) 
+
+inputCheck(argv)
+setInputs(argv)
+createNetwork(argvParams)
 
 sendMessage(argvParams, "test", 1)
 sendMessage(argvParams, "test", 1)
@@ -135,24 +135,3 @@ let cpuTime = proc.TotalProcessorTime.TotalMilliseconds
 // printfn "Real Time = %dms" realTime.ElapsedMilliseconds
 
 System.Console.ReadLine() |> ignore
-
-        // | :? NodeParams as param ->
-        //     nodeParams <- param
-        //     nodesName <- nodeParams.SystemParams.Topology + "-" + Convert.ToString(nodeParams.NodeIdx)
-        //     let selfActor = select ("/user/" + string nodesName) system
-        //     neighborSet <- creatNeighborSet(
-        //         nodeParams.NodeIdx, nodeParams.SystemParams.NumberOfNodes, nodeParams.SystemParams.Topology)
-        //     selfActor <! param
-        // | :? GossipMsg as param ->
-        //     printfn "recieve rumor from %s, msg %s, %A" (sender.Path.Name.ToString()) (param.ToString()) (nodeParams)
-        //     if nodeParams.SystemParams.GossipAlgo = AlgoType.RANDOM then
-        //         if recieveCount = 0 then
-        //             // start the timer
-        //             printfn "start timer for actor %d" nodeParams.NodeIdx
-        //             // actorTimer.ScheduleTellRepeatedlyCancelable() 
-        //             // }
-        //         if recieveCount = Settings.systemLimitParams.randomLimit then
-        //             // get all peices -> broadcast to neighbors
-        //             printfn "actor %d get all the peices" nodeParams.NodeIdx
-        //         recieveCount <- recieveCount + 1
-        //         printfn "recieveCount %d in actor %d" recieveCount nodeParams.NodeIdx 

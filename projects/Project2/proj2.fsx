@@ -68,8 +68,9 @@ let setInputs(argv: string[]) =
     argvParams <- ArgvInputs(numberOfNodes, argv.[2], argv.[3])
 
 
-let GossipToNeighbor(nodeName: string, neighborSet: Set<int>, msg: GossipMsg, topology: string) = async {
-    // printfn "[%s] Start gossiping to neighbor, neighbors %A" nodeName neighborSet
+let GossipToNeighbor(nodeIdx: int, nodeName: string, neighborSet: Set<int>, msg: GossipMsg, topology: string) = async {
+    // if nodeIdx = printTargetIdx then
+    //     printfn "[%s] Start gossiping to neighbor, neighbors %A" nodeName neighborSet
     let neigborCount = neighborSet.Count
     let mutable randomNeighborIdx = -1
     let mutable neigborName = ""
@@ -111,17 +112,34 @@ let randomSenderFunction (nodeMailbox:Actor<SenderType>) =
         | UPDATE(newNSet:Set<int>) ->
             neighborSet <- newNSet
         | SEND ->
-            let task = GossipToNeighbor(nodeName, neighborSet, gossipMsg, topology)
+            let task = GossipToNeighbor(nodeIdx, nodeName, neighborSet, gossipMsg, topology)
             Async.RunSynchronously task
             sendCount <- sendCount + 1
             selfActor <! SEND
         | STOPSEND ->
+            printfn "[%s] Recv STOPSEND" nodeName 
             let sender = nodeMailbox.Sender()
             sender <! sendCount
-            selfActor <! PoisonPill.Instance
         return! loop ()
     }
     loop()
+
+let closeNode(mainActor, selfActor, nodeIdx, sendCount, runTime, startTime, endTime) =
+    let infos: NodeInfos = {
+       NodeIdx = nodeIdx
+       SendCount = sendCount
+       RunTime = runTime // actorTime.ElapsedMilliseconds
+       StartTime = startTime
+       EndTime = endTime
+    }
+
+    let sendNodeInfo = async { 
+        // let! response = mainActor <? RECORDNODE(infos)
+        // return response
+        mainActor <! RECORDNODE(infos)
+    }
+    Async.RunSynchronously(sendNodeInfo, systemLimitParams.systemTimeOut)
+    selfActor <! PoisonPill.Instance
 
 
 let NodeFunction (nodeMailbox:Actor<ReceiveType>) = 
@@ -134,8 +152,11 @@ let NodeFunction (nodeMailbox:Actor<ReceiveType>) =
         PushSumW = 0
     }
     let mutable recvCount = 0
+    let mutable sendCount = 0
+
     let mutable nodeName = "unset"
-    
+    let mutable stopRecv = false
+
     let mutable originalNeighborSet = Set.empty
     let mutable neighborSet = Set.empty
     let mutable selfActor = select ("") system
@@ -156,8 +177,8 @@ let NodeFunction (nodeMailbox:Actor<ReceiveType>) =
             neighborSet <- creatNeighborSet(nodeParams.NodeIdx, nodeParams.SystemParams.NumberOfNodes, nodeParams.SystemParams.Topology)
             originalNeighborSet <- neighborSet
             selfActor <- select ("/user/" + string nodeName) system
-            let senderName = nodeName + "-sender"
-            selfSendActor <- select ("/user/" + string senderName) system
+            let nodeSenderName = nodeName + "-sender"
+            selfSendActor <- select ("/user/" + string nodeSenderName) system
             selfActor <! WAITING "READY"
 
         | GOSSIP(gossipMsg: GossipMsg) ->
@@ -168,64 +189,56 @@ let NodeFunction (nodeMailbox:Actor<ReceiveType>) =
                 if recvCount < systemLimitParams.randomLimit then
                     if recvCount = 1 then 
                         // start to be a sender actor
-                        let senderName = nodeName + "-sender" 
-                        let senderActor = spawn system senderName randomSenderFunction
-                        senderActor <! STARTSENDER(nodeParams.NodeIdx, neighborSet, gossipMsg, topology) 
-                    printfn "recieve rumor msg from %s, receive count %d" senderName recvCount
+                        let nodeSenderName = nodeName + "-sender" 
+                        let senderActor = spawn system nodeSenderName randomSenderFunction
+                        senderActor <! STARTSENDER(nodeParams.NodeIdx, neighborSet, gossipMsg, topology)
+                    if nodeParams.NodeIdx = printTargetIdx then     
+                        printfn "[%s] recieve rumor msg from %s, receive count %d" nodeName senderName recvCount
                     selfActor <! WAITING ""
                 elif recvCount = systemLimitParams.randomLimit then
-                    printfn "recieve rumor msg from %s, stop recv" senderName
+                    // printfn "recieve rumor msg from %s, stop recv" senderName
                     selfActor <! STOPRECV ""
         | WAITING str -> ()
         | STOPRECV str ->
             // inform neighbors
+            stopRecv <- true
             let topology = nodeParams.SystemParams.Topology
-            printfn "[%s] receive all the rumors" nodeName
+            if nodeParams.NodeIdx = printTargetIdx then 
+                printfn "[%s] receive all the rumors, %A" nodeName originalNeighborSet
             for i in Set.toList(originalNeighborSet) do
                 let neigborName = topology + "-" + i.ToString()
                 let nActor = select ("/user/" + string neigborName) system
                 nActor <! INFORMFINISH (nodeParams.NodeIdx)
 
+            if neighborSet.IsEmpty then
+                if nodeParams.NodeIdx = printTargetIdx then
+                    printfn "[%s] is stopRecv, and neigbors is done" nodeName
+                actorTime.Stop()
+                let endTime = DateTime.Now.ToString("hh.mm.ss.ffffff")
+                closeNode(mainActor, selfActor, nodeParams.NodeIdx, sendCount, actorTime.ElapsedMilliseconds, startTime, endTime)
+
         | INFORMFINISH(neighborIdx: int) ->
             if nodeParams.NodeIdx = printTargetIdx then
-                printfn "[%s]'s %d neighbor is done" nodeName neighborIdx
+                printfn "[%s]'s neigbor %d is done" nodeName neighborIdx
             // update neighborSet and pass it to sender actor
-            neighborSet <- neighborSet.Remove(neighborIdx) 
+            neighborSet <- neighborSet.Remove(neighborIdx)
+            selfSendActor <! UPDATE(neighborSet) 
+            
             if neighborSet.IsEmpty then
-                // close the actor, all neighbor is finish
-                actorTime.Stop()
-                let endTime = DateTime.Now.ToString("hh.mm.ss.ffffff");
-                if nodeParams.NodeIdx = printTargetIdx then
-                    printfn "endTime %A" endTime
-                    printfn "actor durationTime = %dms" actorTime.ElapsedMilliseconds
-                
+                // close send actor, all neighbor is finish
                 let getSendCount = async { 
                     let! response = selfSendActor <? STOPSEND
                     return response 
                 }
-                let sendCount = Async.RunSynchronously(getSendCount, systemLimitParams.systemTimeOut) |> int
-                if nodeParams.NodeIdx = printTargetIdx then
-                    printfn "send time %A" sendCount
-
-                let infos: NodeInfos = {
-                   NodeIdx = nodeParams.NodeIdx
-                   SendCount = sendCount
-                   RunTime = actorTime.ElapsedMilliseconds
-                   StartTime = startTime
-                   EndTime = endTime
-                }
-
-                let sendNodeInfo = async { 
-                    // let! response = mainActor <? RECORDNODE(infos)
-                    // return response
-                    mainActor <! RECORDNODE(infos)
-                }
-                Async.RunSynchronously(sendNodeInfo, systemLimitParams.systemTimeOut)
-                // let hasSendInfo = Async.RunSynchronously(sendNodeInfo, systemLimitParams.systemTimeOut)
-                // if hasSendInfo then
-                //     printfn "node info records"
-                selfActor <! PoisonPill.Instance
-            selfSendActor <! UPDATE(neighborSet)
+                sendCount <- Async.RunSynchronously(getSendCount, systemLimitParams.systemTimeOut) |> int
+                selfSendActor <! PoisonPill.Instance
+                
+                if stopRecv then
+                    if nodeParams.NodeIdx = printTargetIdx then
+                        printfn "[%s]'s neigbors is done, and stopRecv" nodeName 
+                    actorTime.Stop()
+                    let endTime = DateTime.Now.ToString("hh.mm.ss.ffffff")
+                    closeNode(mainActor, selfActor, nodeParams.NodeIdx, sendCount, actorTime.ElapsedMilliseconds, startTime, endTime)
         return! loop ()
     }
     loop ()

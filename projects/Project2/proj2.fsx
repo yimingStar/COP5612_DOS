@@ -46,7 +46,7 @@ let config =
 let proc = Process.GetCurrentProcess()
 let realTime = Stopwatch.StartNew()
 let system = System.create "proj2Master" config
-let printTargetIdx = 1
+let printTargetIdx = 3
 
 
 let inputCheck(argv: string[]) = 
@@ -68,6 +68,22 @@ let setInputs(argv: string[]) =
     argvParams <- ArgvInputs(numberOfNodes, argv.[2], argv.[3])
 
 
+let PushSumToNeighbor(nodeIdx: int, nodeName: string, neighborSet: Set<int>, msg: PushSumMsg, topology: string) = async {
+    // if nodeIdx = printTargetIdx then
+    //     printfn "[%s] Start Push to neighbor, neighbors %A" nodeName neighborSet
+    let neigborCount = neighborSet.Count
+    let mutable randomNeighborIdx = -1
+    let mutable neigborName = ""
+    if neigborCount > 0 then
+        randomNeighborIdx <- Random().Next(0, neigborCount)
+        let nList = Set.toList(neighborSet)
+        neigborName <- topology + "-" + nList.[randomNeighborIdx].ToString()
+        let nActor = select ("/user/" + string neigborName) system
+        do! Async.Sleep systemLimitParams.roundDuration 
+        nActor <! PUSHSUM msg
+}
+
+
 let GossipToNeighbor(nodeIdx: int, nodeName: string, neighborSet: Set<int>, msg: GossipMsg, topology: string) = async {
     // if nodeIdx = printTargetIdx then
     //     printfn "[%s] Start gossiping to neighbor, neighbors %A" nodeName neighborSet
@@ -85,21 +101,45 @@ let GossipToNeighbor(nodeIdx: int, nodeName: string, neighborSet: Set<int>, msg:
 }
 
 
-let randomSenderFunction (nodeMailbox:Actor<SenderType>) =
+let SenderFunction (nodeMailbox:Actor<SenderType>) =
+    let mutable nodeIdx = 0
+    let mutable nodeName = ""
+    let mutable nodeRecvName = ""
     let mutable neighborSet = Set.empty
     let mutable topology = ""
+
+    // random
     let mutable gossipMsg: GossipMsg = {
         Content = ""
     }
-    let mutable nodeIdx = 0
-    let mutable nodeName = ""
+    // pushsum
+    let mutable prevS = 0.0
+    let mutable prevW = 0.0
+    let mutable sVal = 0.0
+    let mutable wVal = 0.0
+    let mutable stopRecv = false
+    let mutable stopSend = false
+
+    let mutable inRangCount = 0
+
     let mutable selfActor = select ("") system
+    let mutable selfRecvActor = select ("") system
     let mutable sendCount = 0
 
     let rec loop () = actor {
         let! (msg: SenderType) = nodeMailbox.Receive()
         match msg with
-        | STARTSENDER(setNodeIdx: int, setSet:Set<int>, setMsg: GossipMsg, setTopology: string) -> 
+        | STOPSENDER ->
+            printfn "[%s] Recv STOPSENDER" nodeName 
+            let sender = nodeMailbox.Sender()
+            let recordList = [1.0, abs((sVal / wVal) - (prevS/prevW))]
+            sender <! recordList
+            stopSend <- true
+
+        | UPDATESET(newNSet:Set<int>) ->
+            neighborSet <- newNSet
+
+        | SETRSENDER(setNodeIdx: int, setSet:Set<int>, setMsg: GossipMsg, setTopology: string) -> 
             nodeIdx <- setNodeIdx
             nodeName <- setTopology + "-" + Convert.ToString(nodeIdx) + "-sender"
 
@@ -108,26 +148,82 @@ let randomSenderFunction (nodeMailbox:Actor<SenderType>) =
             topology <- setTopology
 
             selfActor <- select ("/user/" + string nodeName) system
-            selfActor <! SEND 
-        | UPDATE(newNSet:Set<int>) ->
-            neighborSet <- newNSet
-        | SEND ->
-            let task = GossipToNeighbor(nodeIdx, nodeName, neighborSet, gossipMsg, topology)
-            Async.RunSynchronously task
-            sendCount <- sendCount + 1
-            selfActor <! SEND
-        | STOPSEND ->
-            printfn "[%s] Recv STOPSEND" nodeName 
-            let sender = nodeMailbox.Sender()
-            sender <! sendCount
+            selfActor <! RSEND 
+
+        | RSEND ->
+            if not stopSend then
+                let task = GossipToNeighbor(nodeIdx, nodeName, neighborSet, gossipMsg, topology)
+                Async.RunSynchronously task
+                sendCount <- sendCount + 1
+                selfActor <! RSEND
+        
+        // PushSum Flow Functions
+        | SETPSSENDER(setNodeIdx: int, setSet:Set<int>, setTopology: string) -> 
+            nodeIdx <- setNodeIdx
+            nodeRecvName <- setTopology + "-" + Convert.ToString(nodeIdx)
+            nodeName <- setTopology + "-" + Convert.ToString(nodeIdx) + "-sender"
+            neighborSet <- setSet
+            topology <- setTopology
+            
+            sVal <- nodeIdx |> double
+            prevS <- sVal
+            wVal <- 1.0
+            prevW <- prevW
+
+            selfActor <- select ("/user/" + string nodeName) system
+            selfRecvActor <- select ("/user/" + string nodeRecvName) system
+            // selfActor <! PSSEND
+            let pushSumMsg: PushSumMsg = {
+                PushSumS = 0.0
+                PushSumW = 0.0
+            }
+            selfActor <! GAINVALUE
+
+        | GAINVALUE(pushSumMsg: PushSumMsg) ->
+            prevS <- sVal
+            prevW <- wVal
+            sVal <- sVal + pushSumMsg.PushSumS
+            wVal <- wVal + pushSumMsg.PushSumW
+                       
+            let change: double = abs((sVal / wVal) - (prevS/prevW))
+            if nodeIdx = printTargetIdx then     
+                printfn "[%s] gain value, original value %f, new value %f, change value %f, count %d" nodeName (sVal / wVal) (prevS/prevW) change inRangCount
+            if change <= systemLimitParams.pushSumRange then
+                inRangCount <- inRangCount + 1
+                if inRangCount = systemLimitParams.pushSumLimit then
+                    selfRecvActor <! STOPRECV ""
+                    stopRecv <- true
+            elif change > systemLimitParams.pushSumRange then
+                inRangCount <- 0
+
+            selfActor <! PSSEND
+        | PSSEND ->  
+            // After gaining, give the half to neighbor
+            if not stopSend then
+                prevS <- sVal
+                prevW <- wVal
+                // left half
+                sVal <- sVal/2.0
+                wVal <- wVal/2.0
+
+                let sendPushRatio: PushSumMsg = {
+                    PushSumS = sVal
+                    PushSumW = wVal
+                }
+
+                let task = PushSumToNeighbor(nodeIdx, nodeName, neighborSet, sendPushRatio, topology)
+                Async.RunSynchronously task
+                sendCount <- sendCount + 1
+                selfActor <! PSSEND
         return! loop ()
     }
     loop()
 
-let closeNode(mainActor, selfActor, nodeIdx, sendCount, runTime, startTime, endTime) =
+let closeNode(mainActor, selfActor, selfSendActor, nodeIdx, senderInfo: SenderInfos, runTime, startTime, endTime) =
     let infos: NodeInfos = {
        NodeIdx = nodeIdx
-       SendCount = sendCount
+       SendCount = senderInfo.SendCount
+       RatioChange = senderInfo.RatioChange
        RunTime = runTime // actorTime.ElapsedMilliseconds
        StartTime = startTime
        EndTime = endTime
@@ -148,17 +244,20 @@ let NodeFunction (nodeMailbox:Actor<ReceiveType>) =
         NodeIdx = -1
         SystemParams = ArgvInputs(-1, "", "")
         MaxRecieveCount = 0
-        PushSumS = 0
-        PushSumW = 0
     }
+    
+    // converge conditions
     let mutable recvCount = 0
-    let mutable sendCount = 0
+    let mutable senderInfo = SenderInfos(0, 1.0)
 
     let mutable nodeName = "unset"
+    let mutable nodeSenderName = "unset"
+    let mutable topology = "unset"
     let mutable stopRecv = false
-
+    let mutable stopSend = false
     let mutable originalNeighborSet = Set.empty
     let mutable neighborSet = Set.empty
+
     let mutable selfActor = select ("") system
     let mutable selfSendActor =  select ("") system
 
@@ -173,72 +272,86 @@ let NodeFunction (nodeMailbox:Actor<ReceiveType>) =
         match msg with
         | INIT(param:NodeParams) -> 
             nodeParams <- param
+            
             nodeName <- nodeParams.SystemParams.Topology + "-" + Convert.ToString(nodeParams.NodeIdx)
+            nodeSenderName <- nodeName + "-sender"
+            
+            topology <- nodeParams.SystemParams.Topology
             neighborSet <- creatNeighborSet(nodeParams.NodeIdx, nodeParams.SystemParams.NumberOfNodes, nodeParams.SystemParams.Topology)
             originalNeighborSet <- neighborSet
+
             selfActor <- select ("/user/" + string nodeName) system
-            let nodeSenderName = nodeName + "-sender"
+            let senderActor = spawn system nodeSenderName SenderFunction
             selfSendActor <- select ("/user/" + string nodeSenderName) system
             selfActor <! WAITING "READY"
 
         | GOSSIP(gossipMsg: GossipMsg) ->
-            let topology = nodeParams.SystemParams.Topology
             let senderName = sender.Path.Name.ToString()
-            if nodeParams.SystemParams.GossipAlgo = AlgoType.RANDOM then
-                recvCount <- recvCount + 1
-                if recvCount < systemLimitParams.randomLimit then
-                    if recvCount = 1 then 
-                        // start to be a sender actor
-                        let nodeSenderName = nodeName + "-sender" 
-                        let senderActor = spawn system nodeSenderName randomSenderFunction
-                        senderActor <! STARTSENDER(nodeParams.NodeIdx, neighborSet, gossipMsg, topology)
-                    if nodeParams.NodeIdx = printTargetIdx then     
-                        printfn "[%s] recieve rumor msg from %s, receive count %d" nodeName senderName recvCount
-                    selfActor <! WAITING ""
-                elif recvCount = systemLimitParams.randomLimit then
-                    // printfn "recieve rumor msg from %s, stop recv" senderName
-                    selfActor <! STOPRECV ""
+            recvCount <- recvCount + 1
+            if recvCount < systemLimitParams.randomLimit then
+                if recvCount = 1 then 
+                    // start to be a sender actor
+                    selfSendActor <! SETRSENDER(nodeParams.NodeIdx, neighborSet, gossipMsg, topology)
+                if nodeParams.NodeIdx = printTargetIdx then     
+                    printfn "[%s] recieve rumor msg from %s, receive count %d" nodeName senderName recvCount
+                selfActor <! WAITING ""
+            elif recvCount = systemLimitParams.randomLimit then
+                // printfn "recieve rumor msg from %s, stop recv" senderName
+                selfActor <! STOPRECV ""
+
+        | PUSHSUM(pushSumMsg: PushSumMsg) ->
+            recvCount <- recvCount + 1
+            if recvCount = 1 then
+                // spawn the sender actor
+                selfSendActor <! SETPSSENDER(nodeParams.NodeIdx, neighborSet, topology)
+            else
+                selfSendActor <! GAINVALUE(pushSumMsg)
+            selfActor <! WAITING ""
+
         | WAITING str -> ()
         | STOPRECV str ->
             // inform neighbors
             stopRecv <- true
             let topology = nodeParams.SystemParams.Topology
-            if nodeParams.NodeIdx = printTargetIdx then 
-                printfn "[%s] receive all the rumors, %A" nodeName originalNeighborSet
+            if nodeParams.NodeIdx = printTargetIdx then
+                printfn "[%s] Stop Receiving the rumors, %A" nodeName originalNeighborSet
             for i in Set.toList(originalNeighborSet) do
                 let neigborName = topology + "-" + i.ToString()
                 let nActor = select ("/user/" + string neigborName) system
                 nActor <! INFORMFINISH (nodeParams.NodeIdx)
 
-            if neighborSet.IsEmpty then
+            if neighborSet.IsEmpty && stopSend then
                 if nodeParams.NodeIdx = printTargetIdx then
                     printfn "[%s] is stopRecv, and neigbors is done" nodeName
                 actorTime.Stop()
                 let endTime = DateTime.Now.ToString("hh.mm.ss.ffffff")
-                closeNode(mainActor, selfActor, nodeParams.NodeIdx, sendCount, actorTime.ElapsedMilliseconds, startTime, endTime)
+                closeNode(mainActor, selfActor, selfSendActor, nodeParams.NodeIdx, senderInfo, actorTime.ElapsedMilliseconds, startTime, endTime)
 
         | INFORMFINISH(neighborIdx: int) ->
             if nodeParams.NodeIdx = printTargetIdx then
                 printfn "[%s]'s neigbor %d is done" nodeName neighborIdx
             // update neighborSet and pass it to sender actor
             neighborSet <- neighborSet.Remove(neighborIdx)
-            selfSendActor <! UPDATE(neighborSet) 
+            selfSendActor <! UPDATESET(neighborSet) 
             
-            if neighborSet.IsEmpty then
+            if neighborSet.IsEmpty && not stopSend then
                 // close send actor, all neighbor is finish
                 let getSendCount = async { 
-                    let! response = selfSendActor <? STOPSEND
+                    let! response = selfSendActor <? STOPSENDER
+                    stopSend <- true
+                    printfn "response %A" response
                     return response 
                 }
-                sendCount <- Async.RunSynchronously(getSendCount, systemLimitParams.systemTimeOut) |> int
+
+                let senderList = Async.RunSynchronously(getSendCount, systemLimitParams.systemTimeOut)
                 selfSendActor <! PoisonPill.Instance
-                
+
                 if stopRecv then
                     if nodeParams.NodeIdx = printTargetIdx then
                         printfn "[%s]'s neigbors is done, and stopRecv" nodeName 
                     actorTime.Stop()
                     let endTime = DateTime.Now.ToString("hh.mm.ss.ffffff")
-                    closeNode(mainActor, selfActor, nodeParams.NodeIdx, sendCount, actorTime.ElapsedMilliseconds, startTime, endTime)
+                    closeNode(mainActor, selfActor, selfSendActor, nodeParams.NodeIdx, senderInfo, actorTime.ElapsedMilliseconds, startTime, endTime)
         return! loop ()
     }
     loop ()
@@ -258,7 +371,7 @@ let MainFunction (mainMailbox:Actor<MainNodeType>) =
             totalSendTime <- totalSendTime + info.SendCount
             if nodeInfoList.Length = argvParams.NumberOfNodes then
                 for r in nodeInfoList do
-                    let recordLine = sprintf "%d, %d, %d, %s, %s" r.NodeIdx r.SendCount r.RunTime r.StartTime r.EndTime
+                    let recordLine = sprintf "%d, %d, %f, %d, %s, %s" r.NodeIdx r.SendCount r.RatioChange r.RunTime r.StartTime r.EndTime
                     System.IO.File.AppendAllLinesAsync(recordFilePath, [recordLine]) |> ignore
                 selfActor <! STOPSYSTEM
         | STOPSYSTEM ->
@@ -280,21 +393,25 @@ let createNetwork(param) =
                 NodeIdx = i
                 SystemParams = param
                 MaxRecieveCount = maxRecieveCount
-                PushSumS = i
-                PushSumW = 1
             }
             networkNode <! INIT nodeParams
 
     | _ ->  failwith "Invalid input variables to build a network"
 
 
-let sendMessage(systemParams: ArgvInputs, content: string, startIdx: int) =
-    let gossipMsg: GossipMsg = {
-        Content = content
-    }
+let sendStartMessage(systemParams: ArgvInputs, content: string, startIdx: int) =
     let startNodesName = systemParams.Topology + "-" + Convert.ToString(startIdx)
-    system.ActorSelection(sprintf "/user/%s" startNodesName) <! GOSSIP gossipMsg
-
+    if argvParams.Algo = AlgoType.RANDOM then
+        let gossipMsg: GossipMsg = {
+            Content = content
+        }   
+        system.ActorSelection(sprintf "/user/%s" startNodesName) <! GOSSIP gossipMsg
+    elif argvParams.Algo = AlgoType.PUSHSUM then
+        let pushSumMsg: PushSumMsg = {
+            PushSumS = 0.0
+            PushSumW = 0.0
+        }   
+        system.ActorSelection(sprintf "/user/%s" startNodesName) <! PUSHSUM pushSumMsg
 
 let setMainActor() =
     spawn system "main" MainFunction 
@@ -307,6 +424,6 @@ setInputs(argv)
 
 setMainActor()
 createNetwork(argvParams)
-sendMessage(argvParams, "test", 1)
+sendStartMessage(argvParams, "test", 1)
 
 system.WhenTerminated.Wait()

@@ -85,7 +85,7 @@ let GossipToNeighbor(nodeIdx: int, nodeName: string, neighborSet: Set<int>, msg:
 }
 
 
-let randomSenderFunction (nodeMailbox:Actor<SenderType>) =
+let SenderFunction (nodeMailbox:Actor<SenderType>) =
     let mutable neighborSet = Set.empty
     let mutable topology = ""
     let mutable gossipMsg: GossipMsg = {
@@ -95,6 +95,15 @@ let randomSenderFunction (nodeMailbox:Actor<SenderType>) =
     let mutable nodeName = ""
     let mutable selfActor = select ("") system
     let mutable sendCount = 0
+    let mutable ratioChang: double = 0.0
+
+    let mutable prevS = 0.0
+    let mutable prevW = 1.0
+    let mutable sVal = 0.0
+    let mutable wVal = 1.0
+    let mutable stopRecv = false
+    let mutable stopSend = false
+    let mutable inRangCount = 0
 
     let rec loop () = actor {
         let! (msg: SenderType) = nodeMailbox.Receive()
@@ -108,18 +117,20 @@ let randomSenderFunction (nodeMailbox:Actor<SenderType>) =
             topology <- setTopology
 
             selfActor <- select ("/user/" + string nodeName) system
-            selfActor <! SEND 
+            selfActor <! RSEND 
         | UPDATE(newNSet:Set<int>) ->
             neighborSet <- newNSet
-        | SEND ->
+        | RSEND ->
             let task = GossipToNeighbor(nodeIdx, nodeName, neighborSet, gossipMsg, topology)
             Async.RunSynchronously task
             sendCount <- sendCount + 1
-            selfActor <! SEND
+            selfActor <! RSEND
         | STOPSEND ->
             printfn "[%s] Recv STOPSEND" nodeName 
             let sender = nodeMailbox.Sender()
-            sender <! sendCount
+            let change: double = abs((sVal / wVal) - (prevS/prevW))
+            sender <! sendCount, change
+
         return! loop ()
     }
     loop()
@@ -128,6 +139,7 @@ let closeNode(mainActor, selfActor, nodeIdx, sendCount, runTime, startTime, endT
     let infos: NodeInfos = {
        NodeIdx = nodeIdx
        SendCount = sendCount
+       RatioChange = 0.0
        RunTime = runTime // actorTime.ElapsedMilliseconds
        StartTime = startTime
        EndTime = endTime
@@ -153,8 +165,10 @@ let NodeFunction (nodeMailbox:Actor<ReceiveType>) =
     }
     let mutable recvCount = 0
     let mutable sendCount = 0
+    let mutable ratioChang: double = 0.0
 
     let mutable nodeName = "unset"
+    let mutable nodeSenderName = "unset"
     let mutable stopRecv = false
 
     let mutable originalNeighborSet = Set.empty
@@ -177,7 +191,7 @@ let NodeFunction (nodeMailbox:Actor<ReceiveType>) =
             neighborSet <- creatNeighborSet(nodeParams.NodeIdx, nodeParams.SystemParams.NumberOfNodes, nodeParams.SystemParams.Topology)
             originalNeighborSet <- neighborSet
             selfActor <- select ("/user/" + string nodeName) system
-            let nodeSenderName = nodeName + "-sender"
+            nodeSenderName <- nodeName + "-sender"
             selfSendActor <- select ("/user/" + string nodeSenderName) system
             selfActor <! WAITING "READY"
 
@@ -189,9 +203,8 @@ let NodeFunction (nodeMailbox:Actor<ReceiveType>) =
                 if recvCount < systemLimitParams.randomLimit then
                     if recvCount = 1 then 
                         // start to be a sender actor
-                        let nodeSenderName = nodeName + "-sender" 
-                        let senderActor = spawn system nodeSenderName randomSenderFunction
-                        senderActor <! STARTSENDER(nodeParams.NodeIdx, neighborSet, gossipMsg, topology)
+                        let senderActor = spawn system nodeSenderName SenderFunction
+                        selfSendActor <! STARTSENDER(nodeParams.NodeIdx, neighborSet, gossipMsg, topology)
                     if nodeParams.NodeIdx = printTargetIdx then     
                         printfn "[%s] recieve rumor msg from %s, receive count %d" nodeName senderName recvCount
                     selfActor <! WAITING ""
@@ -228,6 +241,7 @@ let NodeFunction (nodeMailbox:Actor<ReceiveType>) =
                 // close send actor, all neighbor is finish
                 let getSendCount = async { 
                     let! response = selfSendActor <? STOPSEND
+                    printfn "response %A" response
                     return response 
                 }
                 sendCount <- Async.RunSynchronously(getSendCount, systemLimitParams.systemTimeOut) |> int

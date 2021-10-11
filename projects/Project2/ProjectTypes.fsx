@@ -23,6 +23,7 @@ type NodeParams = {
 type NodeInfos = {
     NodeIdx: int
     SendCount: int
+    RatioChange: double
     RunTime: int64
     StartTime: string
     EndTime: string
@@ -43,7 +44,7 @@ type PushSumMsg = {
 type SenderType = 
     | STARTSENDER of int * Set<int> * GossipMsg * string
     | UPDATE of Set<int>
-    | SEND
+    | RSEND
     | STOPSEND
 
 

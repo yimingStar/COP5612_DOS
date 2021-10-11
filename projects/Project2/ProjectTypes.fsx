@@ -36,24 +36,29 @@ type GossipMsg = {
 
 
 type PushSumMsg = {
-    PushSumS: int
-    PushSumW: int
+    PushSumS: double
+    PushSumW: double
 }
 
 
 type SenderType = 
     | STARTSENDER of int * Set<int> * GossipMsg * string
-    | UPDATE of Set<int>
+    | UPDATESET of Set<int>
     | RSEND
     | STOPSEND
+    // PushSum
+    | SETPSSENDER of int * Set<int> * string
+    | PSSEND
+    | GAINVALUE of PushSumMsg
 
 
 type ReceiveType = 
     | INIT of NodeParams
-    | GOSSIP of GossipMsg
     | WAITING of string
     | STOPRECV of string
     | INFORMFINISH of int
+    | GOSSIP of GossipMsg
+    | PUSHSUM of PushSumMsg
 
 
 type MainNodeType = 

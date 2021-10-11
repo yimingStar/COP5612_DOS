@@ -118,7 +118,7 @@ let SenderFunction (nodeMailbox:Actor<SenderType>) =
 
             selfActor <- select ("/user/" + string nodeName) system
             selfActor <! RSEND 
-        | UPDATE(newNSet:Set<int>) ->
+        | UPDATESET(newNSet:Set<int>) ->
             neighborSet <- newNSet
         | RSEND ->
             let task = GossipToNeighbor(nodeIdx, nodeName, neighborSet, gossipMsg, topology)
@@ -235,7 +235,7 @@ let NodeFunction (nodeMailbox:Actor<ReceiveType>) =
                 printfn "[%s]'s neigbor %d is done" nodeName neighborIdx
             // update neighborSet and pass it to sender actor
             neighborSet <- neighborSet.Remove(neighborIdx)
-            selfSendActor <! UPDATE(neighborSet) 
+            selfSendActor <! UPDATESET(neighborSet) 
             
             if neighborSet.IsEmpty then
                 // close send actor, all neighbor is finish
@@ -302,12 +302,19 @@ let createNetwork(param) =
     | _ ->  failwith "Invalid input variables to build a network"
 
 
-let sendMessage(systemParams: ArgvInputs, content: string, startIdx: int) =
-    let gossipMsg: GossipMsg = {
-        Content = content
-    }
+let sendStartMessage(systemParams: ArgvInputs, content: string, startIdx: int) =
     let startNodesName = systemParams.Topology + "-" + Convert.ToString(startIdx)
-    system.ActorSelection(sprintf "/user/%s" startNodesName) <! GOSSIP gossipMsg
+    if argvParams.GossipAlgo = AlgoType.RANDOM then
+        let gossipMsg: GossipMsg = {
+            Content = content
+        }   
+        system.ActorSelection(sprintf "/user/%s" startNodesName) <! GOSSIP gossipMsg
+    elif argvParams.GossipAlgo = AlgoType.PUSHSUM then
+        let pushSumMsg: PushSumMsg = {
+            PushSumS = 0.0
+            PushSumW = 0.0
+        }   
+        system.ActorSelection(sprintf "/user/%s" startNodesName) <! PUSHSUM pushSumMsg
 
 
 let setMainActor() =
@@ -321,6 +328,6 @@ setInputs(argv)
 
 setMainActor()
 createNetwork(argvParams)
-sendMessage(argvParams, "test", 1)
+sendStartMessage(argvParams, "test", 1)
 
 system.WhenTerminated.Wait()

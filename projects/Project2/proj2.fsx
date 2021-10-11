@@ -330,8 +330,7 @@ let NodeFunction (nodeMailbox:Actor<ReceiveType>) =
                     selfActor <! STOPRECV ""
             elif change > systemLimitParams.pushSumRange then
                 inRangCount <- 0
-
-            selfActor <! WAITING ""
+                selfActor <! WAITING ""
 
         | WAITING str ->
             if stopRecv && stopSend && not close then
@@ -390,6 +389,7 @@ let MainFunction (mainMailbox:Actor<MainNodeType>) =
     let mutable nodeInfoList = []
     let mutable selfActor = select ("/user/main") system
     let mutable totalSendTime = 0
+    let mutable writeFile = false
 
     let rec loop () = actor {
         let! (msg: MainNodeType) = mainMailbox.Receive()
@@ -398,7 +398,10 @@ let MainFunction (mainMailbox:Actor<MainNodeType>) =
             printfn "info %A" info
             nodeInfoList <- nodeInfoList @ [info]
             totalSendTime <- totalSendTime + info.SendCount
-            if nodeInfoList.Length = argvParams.NumberOfNodes then
+            
+            if nodeInfoList.Length = argvParams.NumberOfNodes && not writeFile then
+                writeFile <- true
+                printfn "write FILE !!!!!!!!!!!!!! %d" nodeInfoList.Length
                 for r in nodeInfoList do
                     let recordLine = sprintf "%d, %d, %d, %s, %s" r.NodeIdx r.SendCount r.RunTime r.StartTime r.EndTime
                     System.IO.File.AppendAllLinesAsync(recordFilePath, [recordLine]) |> ignore

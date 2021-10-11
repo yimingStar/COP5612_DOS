@@ -84,26 +84,46 @@ let GossipToNeighbor(nodeIdx: int, nodeName: string, neighborSet: Set<int>, msg:
         nActor <! GOSSIP msg
 }
 
+let PushSumToNeighbor(nodeIdx: int, nodeName: string, neighborSet: Set<int>, msg: PushSumMsg, topology: string) = async {
+    // if nodeIdx = printTargetIdx then
+    //     printfn "[%s] Start Push to neighbor, neighbors %A" nodeName neighborSet
+    let neigborCount = neighborSet.Count
+    let mutable randomNeighborIdx = -1
+    let mutable neigborName = ""
+    if neigborCount > 0 then
+        randomNeighborIdx <- Random().Next(0, neigborCount)
+        let nList = Set.toList(neighborSet)
+        neigborName <- topology + "-" + nList.[randomNeighborIdx].ToString()
+        let nActor = select ("/user/" + string neigborName) system
+        do! Async.Sleep systemLimitParams.roundDuration 
+        nActor <! PUSHSUM msg
+}
 
 let SenderFunction (nodeMailbox:Actor<SenderType>) =
+    let mutable nodeIdx = 0
+    let mutable nodeName = ""
+    let mutable nodeRecvName = ""
+
+    let mutable selfActor = select ("") system
+    let mutable selfRecvActor = select ("") system
+
     let mutable neighborSet = Set.empty
     let mutable topology = ""
+
     let mutable gossipMsg: GossipMsg = {
         Content = ""
     }
-    let mutable nodeIdx = 0
-    let mutable nodeName = ""
-    let mutable selfActor = select ("") system
-    let mutable sendCount = 0
-    let mutable ratioChang: double = 0.0
-
     let mutable prevS = 0.0
     let mutable prevW = 1.0
     let mutable sVal = 0.0
     let mutable wVal = 1.0
+    let mutable inRangCount = 0
+
     let mutable stopRecv = false
     let mutable stopSend = false
-    let mutable inRangCount = 0
+
+    let mutable sendCount = 0
+    let mutable ratioChang: double = 0.0
 
     let rec loop () = actor {
         let! (msg: SenderType) = nodeMailbox.Receive()
@@ -130,6 +150,59 @@ let SenderFunction (nodeMailbox:Actor<SenderType>) =
             let sender = nodeMailbox.Sender()
             let change: double = abs((sVal / wVal) - (prevS/prevW))
             sender <! sendCount
+
+        // PushSum Flow Functions
+        | SETPSSENDER(setNodeIdx: int, setSet:Set<int>, setTopology: string) -> 
+            nodeIdx <- setNodeIdx
+            topology <- setTopology
+            nodeName <- topology + "-" + Convert.ToString(nodeIdx) + "-sender"
+            nodeRecvName <- topology + "-" + Convert.ToString(nodeIdx)
+            neighborSet <- setSet
+            
+            sVal <- nodeIdx |> double
+            prevS <- sVal
+            wVal <- 1.0
+            prevW <- prevW
+
+            selfActor <- select ("/user/" + string nodeName) system
+            selfRecvActor <- select ("/user/" + string nodeRecvName) system
+            // selfActor <! PSSEND
+            let pushSumMsg: PushSumMsg = {
+                PushSumS = 0.0
+                PushSumW = 0.0
+            }
+            selfActor <! GAINVALUE
+            
+        | GAINVALUE(pushSumMsg: PushSumMsg) ->
+            // gain and give
+            sVal <- sVal + pushSumMsg.PushSumS
+            wVal <- wVal + pushSumMsg.PushSumW
+
+            prevS <- sVal
+            prevW <- wVal
+            // left half
+            sVal <- sVal/2.0
+            wVal <- wVal/2.0
+
+            let sendPushRatio: PushSumMsg = {
+                PushSumS = sVal
+                PushSumW = wVal
+            }
+
+            let task = PushSumToNeighbor(nodeIdx, nodeName, neighborSet, sendPushRatio, topology)
+            Async.RunSynchronously task
+            sendCount <- sendCount + 1
+
+            let change: double = abs((sVal / wVal) - (prevS/prevW))
+            if nodeIdx = printTargetIdx then     
+                printfn "[%s] gain value, original value %f, new value %f, change value %f, count %d" nodeName (sVal / wVal) (prevS/prevW) change inRangCount
+            if change <= systemLimitParams.pushSumRange then
+                inRangCount <- inRangCount + 1
+                if inRangCount = systemLimitParams.pushSumLimit && not stopRecv then
+                    selfRecvActor <! STOPRECV ""
+                    stopRecv <- true
+            elif change > systemLimitParams.pushSumRange then
+                inRangCount <- 0
 
         return! loop ()
     }
@@ -242,7 +315,7 @@ let NodeFunction (nodeMailbox:Actor<ReceiveType>) =
                 let nActor = select ("/user/" + string neigborName) system
                 nActor <! INFORMFINISH (nodeParams.NodeIdx)
             selfActor <! WAITING ""
-            
+
         | INFORMFINISH(neighborIdx: int) ->
             if nodeParams.NodeIdx = printTargetIdx then
                 printfn "[%s]'s neigbor %d is done" nodeName neighborIdx

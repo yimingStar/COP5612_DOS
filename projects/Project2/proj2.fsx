@@ -34,6 +34,7 @@ let masterConfig =
 let proc = Process.GetCurrentProcess()
 let realTime = Stopwatch.StartNew()
 let system = System.create "proj2Master" masterConfig
+let printTargetIdx = 1
 
 let inputCheck(argv: string[]) = 
     try
@@ -57,14 +58,14 @@ let GossipToNeighbor(nodeName: string, neighborSet: Set<int>, msg: GossipMsg, to
     let neigborCount = neighborSet.Count
     let mutable randomNeighborIdx = -1
     let mutable neigborName = ""
-
-    randomNeighborIdx <- Random().Next(0, neigborCount)
-    let nList = Set.toList(neighborSet)
-    neigborName <- topology + "-" + nList.[randomNeighborIdx].ToString()
-    // printfn "neigborName %s" neigborName
-    let nActor = select ("/user/" + string neigborName) system
-    do! Async.Sleep systemLimitParams.roundDuration 
-    nActor <! GOSSIP msg
+    if neigborCount > 0 then
+        randomNeighborIdx <- Random().Next(0, neigborCount)
+        let nList = Set.toList(neighborSet)
+        neigborName <- topology + "-" + nList.[randomNeighborIdx].ToString()
+        // printfn "neigborName %s" neigborName
+        let nActor = select ("/user/" + string neigborName) system
+        do! Async.Sleep systemLimitParams.roundDuration 
+        nActor <! GOSSIP msg
 }
 
 let randomSenderFunction (nodeMailbox:Actor<SenderType>) =
@@ -73,15 +74,18 @@ let randomSenderFunction (nodeMailbox:Actor<SenderType>) =
     let mutable gossipMsg: GossipMsg = {
         Content = ""
     }
+    let mutable nodeIdx = 0
     let mutable nodeName = ""
     let mutable selfActor = select ("") system
-    let mutable sendMsgCount = 0
+    let mutable sendCount = 0
 
     let rec loop () = actor {
         let! (msg: SenderType) = nodeMailbox.Receive()
         match msg with
-        | STARTSENDER(setName: string, setSet:Set<int>, setMsg: GossipMsg, setTopology: string) -> 
-            nodeName <- setName
+        | STARTSENDER(setNodeIdx: int, setSet:Set<int>, setMsg: GossipMsg, setTopology: string) -> 
+            nodeIdx <- setNodeIdx
+            nodeName <- setTopology + "-" + Convert.ToString(nodeIdx) + "-sender"
+
             neighborSet <- setSet
             gossipMsg <- setMsg
             topology <- setTopology
@@ -93,8 +97,12 @@ let randomSenderFunction (nodeMailbox:Actor<SenderType>) =
         | SEND ->
             let task = GossipToNeighbor(nodeName, neighborSet, gossipMsg, topology)
             Async.RunSynchronously task
-            sendMsgCount <- sendMsgCount + 1
+            sendCount <- sendCount + 1
             selfActor <! SEND
+        | STOPSEND ->
+            let sender = nodeMailbox.Sender()
+            sender <! sendCount
+            selfActor <! PoisonPill.Instance
         return! loop ()
     }
     loop()
@@ -113,6 +121,11 @@ let NodeFunction (nodeMailbox:Actor<ReceiveType>) =
     let mutable selfActor = select ("") system
     let mutable selfSendActor =  select ("") system
 
+    let startTime = DateTime.Now.ToString("hh.mm.ss.ffffff");
+    let actorTime = System.Diagnostics.Stopwatch()
+    printfn "%A" startTime
+    actorTime.Start()
+    
     let rec loop () = actor {
         let! (msg: ReceiveType) = nodeMailbox.Receive()
         let sender = nodeMailbox.Sender()
@@ -127,6 +140,7 @@ let NodeFunction (nodeMailbox:Actor<ReceiveType>) =
             let senderName = nodeName + "-sender"
             selfSendActor <- select ("/user/" + string senderName) system
             selfActor <! WAITING "READY"
+
         | GOSSIP(gossipMsg: GossipMsg) ->
             let topology = nodeParams.SystemParams.Topology
             let senderName = sender.Path.Name.ToString()
@@ -137,17 +151,19 @@ let NodeFunction (nodeMailbox:Actor<ReceiveType>) =
                         // start to be a sender actor
                         let senderName = nodeName + "-sender" 
                         let senderActor = spawn system senderName randomSenderFunction
-                        senderActor <! STARTSENDER(senderName, neighborSet, gossipMsg, topology) 
+                        senderActor <! STARTSENDER(nodeParams.NodeIdx, neighborSet, gossipMsg, topology) 
                     let actionStr = sprintf "recieve rumor msg from %s, receive count %d" senderName recvCount
                     selfActor <! WAITING actionStr
                 else
                     selfActor <! STOPRECV ""
         | WAITING str ->
-            printfn "[%s] WAITING state, prev action - %s" nodeName str
+            if nodeParams.NodeIdx = printTargetIdx then
+                printfn "[%s] WAITING state, prev action - %s" nodeName str
         | STOPRECV str ->
             // inform neighbors
             let topology = nodeParams.SystemParams.Topology
-            printfn "[%s] receive all the rumors" nodeName
+            if nodeParams.NodeIdx = printTargetIdx then
+                printfn "[%s] receive all the rumors" nodeName
             for i in Set.toList(neighborSet) do
                 let neigborName = topology + "-" + i.ToString()
                 let nActor = select ("/user/" + string neigborName) system
@@ -159,12 +175,31 @@ let NodeFunction (nodeMailbox:Actor<ReceiveType>) =
             neighborSet <- neighborSet.Remove(neighborIdx) 
             if neighborSet.IsEmpty then
                 // close the actor, all neighbor is finish
-                selfSendActor <! PoisonPill.Instance
+                actorTime.Stop()
+                let endTime = DateTime.Now.ToString("hh.mm.ss.ffffff");
+                if nodeParams.NodeIdx = printTargetIdx then
+                    printfn "endTime %A" endTime
+                    printfn "actor durationTime = %dms" actorTime.ElapsedMilliseconds
+                let task = async { 
+                    let! response = selfSendActor <? STOPSEND
+                    return response 
+                }
+                let sendCount = task |> Async.RunSynchronously |> int
+                if nodeParams.NodeIdx = printTargetIdx then
+                    printfn "send time %A" sendCount
+
                 selfActor <! PoisonPill.Instance
             selfSendActor <! UPDATE(neighborSet)
         return! loop ()
     }
     loop ()
+
+let MainFunction (mainMailbox:Actor<MainNodeType>) = 
+    let rec loop () = actor {
+        let! (msg: MainNodeType) = mainMailbox.Receive()
+        return! loop ()
+    }
+    loop()
 
 let createNetwork(param) =
     match box param with
@@ -202,7 +237,7 @@ sendMessage(argvParams, "test", 1)
 
 realTime.Stop()
 let cpuTime = proc.TotalProcessorTime.TotalMilliseconds
-// printfn "CPU Time = %dms" (int64 cpuTime)
-// printfn "Real Time = %dms" realTime.ElapsedMilliseconds
+printfn "CPU Time = %dms" (int64 cpuTime)
+printfn "Real Time = %dms" realTime.ElapsedMilliseconds
 
 System.Console.ReadLine() |> ignore

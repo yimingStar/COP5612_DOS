@@ -20,6 +20,14 @@ type NodeParams = {
 }   
 
 
+type NodeInfos = {
+    ReceiveCount: int
+    RunTime: float
+    StartTime: string
+    EndTime: string
+}
+
+
 type GossipMsg = {
     Content: string
 }
@@ -32,9 +40,10 @@ type PushSumMsg = {
 
 
 type SenderType = 
-    | STARTSENDER of string * Set<int> * GossipMsg * string
+    | STARTSENDER of int * Set<int> * GossipMsg * string
     | UPDATE of Set<int>
     | SEND
+    | STOPSEND
 
 type ReceiveType = 
     | INIT of NodeParams
@@ -43,5 +52,7 @@ type ReceiveType =
     | STOPRECV of string
     | INFORMFINISH of int
 
+type MainNodeType = 
+    | RECORDSEND of int * int
 
 

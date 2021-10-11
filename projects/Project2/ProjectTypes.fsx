@@ -42,14 +42,14 @@ type PushSumMsg = {
 
 
 type SenderType = 
-    | STARTSENDER of int * Set<int> * GossipMsg * string
+    | STARTSENDER of int * Set<int> * GossipMsg * string * string
     | UPDATESET of Set<int>
     | RSEND
     | STOPSEND
     // PushSum
-    | SETPSSENDER of int * Set<int> * string
+    | SETPSSENDER of int * Set<int> * string * string * PushSumMsg
+    | UDATESW of PushSumMsg
     | PSSEND
-    | GAINVALUE of PushSumMsg
 
 
 type ReceiveType = 

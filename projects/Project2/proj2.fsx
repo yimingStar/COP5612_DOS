@@ -1,4 +1,5 @@
 open System.Threading
+open System.Collections.Generic
 #time "on"
 #load "Packages.fsx"
 #load "ProjectTypes.fsx"
@@ -20,9 +21,12 @@ let mutable argvParams = ArgvInputs(0, "", "")
 
 let hostIP = "localhost"
 let port = "5567" 
-let masterConfig =
+let config =
     ConfigurationFactory.ParseString(
             @"akka {
+                loggers = Akka.Event.DefaultLogger, Akka
+                loglevel = DEBUG
+
                 actor.provider = remote
                 remote.helios.tcp {
                     hostname = " + hostIP + "
@@ -31,10 +35,19 @@ let masterConfig =
             }"
         )
 
+// let config =
+//     Configuration.parse
+//         @"akka {
+//             actor.loggers = ""Akka.event.slf4j.Slf4jLogger""
+//             actor.loglevel = ""DEBUG""
+//             actor.logging-filter = ""Akka.event.slf4j.Slf4jLoggingFilter""
+//         }"
+
 let proc = Process.GetCurrentProcess()
 let realTime = Stopwatch.StartNew()
-let system = System.create "proj2Master" masterConfig
+let system = System.create "proj2Master" config
 let printTargetIdx = 1
+
 
 let inputCheck(argv: string[]) = 
     try
@@ -42,6 +55,7 @@ let inputCheck(argv: string[]) =
             failwith "Invalid arg variables"
     with 
         | :? System.IndexOutOfRangeException as ex -> printfn "Exception! %A " (ex.Message)
+
 
 let setInputs(argv: string[]) =
     let mutable numberOfNodes = argv.[1] |> int
@@ -52,6 +66,7 @@ let setInputs(argv: string[]) =
         printfn "cubeRoot: %d" cubeRoot    
     printfn "Number of nodes %d" numberOfNodes
     argvParams <- ArgvInputs(numberOfNodes, argv.[2], argv.[3])
+
 
 let GossipToNeighbor(nodeName: string, neighborSet: Set<int>, msg: GossipMsg, topology: string) = async {
     // printfn "[%s] Start gossiping to neighbor, neighbors %A" nodeName neighborSet
@@ -67,6 +82,7 @@ let GossipToNeighbor(nodeName: string, neighborSet: Set<int>, msg: GossipMsg, to
         do! Async.Sleep systemLimitParams.roundDuration 
         nActor <! GOSSIP msg
 }
+
 
 let randomSenderFunction (nodeMailbox:Actor<SenderType>) =
     let mutable neighborSet = Set.empty
@@ -107,7 +123,9 @@ let randomSenderFunction (nodeMailbox:Actor<SenderType>) =
     }
     loop()
 
+
 let NodeFunction (nodeMailbox:Actor<ReceiveType>) = 
+    let mainActor = select ("/user/main") system
     let mutable nodeParams: NodeParams = {
         NodeIdx = -1
         SystemParams = ArgvInputs(-1, "", "")
@@ -170,7 +188,8 @@ let NodeFunction (nodeMailbox:Actor<ReceiveType>) =
                 nActor <! INFORMFINISH (nodeParams.NodeIdx)
 
         | INFORMFINISH(neighborIdx: int) ->
-            printfn "[%s]'s %d neighbor is done" nodeName neighborIdx
+            if nodeParams.NodeIdx = printTargetIdx then
+                printfn "[%s]'s %d neighbor is done" nodeName neighborIdx
             // update neighborSet and pass it to sender actor
             neighborSet <- neighborSet.Remove(neighborIdx) 
             if neighborSet.IsEmpty then
@@ -180,26 +199,63 @@ let NodeFunction (nodeMailbox:Actor<ReceiveType>) =
                 if nodeParams.NodeIdx = printTargetIdx then
                     printfn "endTime %A" endTime
                     printfn "actor durationTime = %dms" actorTime.ElapsedMilliseconds
-                let task = async { 
+                
+                let getSendCount = async { 
                     let! response = selfSendActor <? STOPSEND
                     return response 
                 }
-                let sendCount = task |> Async.RunSynchronously |> int
+                let sendCount = Async.RunSynchronously(getSendCount, systemLimitParams.systemTimeOut) |> int
                 if nodeParams.NodeIdx = printTargetIdx then
                     printfn "send time %A" sendCount
 
+                let infos: NodeInfos = {
+                   NodeIdx = nodeParams.NodeIdx
+                   SendCount = sendCount
+                   RunTime = actorTime.ElapsedMilliseconds
+                   StartTime = startTime
+                   EndTime = endTime
+                }
+
+                let sendNodeInfo = async { 
+                    // let! response = mainActor <? RECORDNODE(infos)
+                    // return response
+                    mainActor <! RECORDNODE(infos)
+                }
+                Async.RunSynchronously(sendNodeInfo, systemLimitParams.systemTimeOut)
+                // let hasSendInfo = Async.RunSynchronously(sendNodeInfo, systemLimitParams.systemTimeOut)
+                // if hasSendInfo then
+                //     printfn "node info records"
                 selfActor <! PoisonPill.Instance
             selfSendActor <! UPDATE(neighborSet)
         return! loop ()
     }
     loop ()
 
-let MainFunction (mainMailbox:Actor<MainNodeType>) = 
+
+let MainFunction (mainMailbox:Actor<MainNodeType>) =
+    let mutable nodeInfoList = []
+    let mutable selfActor = select ("/user/main") system
+    let mutable totalSendTime = 0
+
     let rec loop () = actor {
         let! (msg: MainNodeType) = mainMailbox.Receive()
+        match msg with
+        | RECORDNODE(info: NodeInfos) ->
+            printfn "info %A" info
+            nodeInfoList <- nodeInfoList @ [info]
+            totalSendTime <- totalSendTime + info.SendCount
+            if nodeInfoList.Length = argvParams.NumberOfNodes then
+                for r in nodeInfoList do
+                    let recordLine = sprintf "%d, %d, %d, %s, %s" r.NodeIdx r.SendCount r.RunTime r.StartTime r.EndTime
+                    System.IO.File.AppendAllLinesAsync(recordFilePath, [recordLine])
+                selfActor <! STOPSYSTEM
+        | STOPSYSTEM ->
+            printfn "STOP SYSTEM SIGNAL" 
+            mainMailbox.Context.System.Terminate() |> ignore
         return! loop ()
     }
     loop()
+
 
 let createNetwork(param) =
     match box param with
@@ -219,6 +275,7 @@ let createNetwork(param) =
 
     | _ ->  failwith "Invalid input variables to build a network"
 
+
 let sendMessage(systemParams: ArgvInputs, content: string, startIdx: int) =
     let gossipMsg: GossipMsg = {
         Content = content
@@ -226,18 +283,18 @@ let sendMessage(systemParams: ArgvInputs, content: string, startIdx: int) =
     let startNodesName = systemParams.Topology + "-" + Convert.ToString(startIdx)
     system.ActorSelection(sprintf "/user/%s" startNodesName) <! GOSSIP gossipMsg
 
+
+let setMainActor() =
+    spawn system "main" MainFunction 
+
 let argv = fsi.CommandLineArgs
 printfn "input arguments: %A" (argv) 
 
 inputCheck(argv)
 setInputs(argv)
-createNetwork(argvParams)
 
+setMainActor()
+createNetwork(argvParams)
 sendMessage(argvParams, "test", 1)
 
-realTime.Stop()
-let cpuTime = proc.TotalProcessorTime.TotalMilliseconds
-printfn "CPU Time = %dms" (int64 cpuTime)
-printfn "Real Time = %dms" realTime.ElapsedMilliseconds
-
-System.Console.ReadLine() |> ignore
+system.WhenTerminated.Wait()

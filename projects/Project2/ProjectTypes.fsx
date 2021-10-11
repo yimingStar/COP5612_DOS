@@ -21,8 +21,9 @@ type NodeParams = {
 
 
 type NodeInfos = {
-    ReceiveCount: int
-    RunTime: float
+    NodeIdx: int
+    SendCount: int
+    RunTime: int64
     StartTime: string
     EndTime: string
 }
@@ -45,6 +46,7 @@ type SenderType =
     | SEND
     | STOPSEND
 
+
 type ReceiveType = 
     | INIT of NodeParams
     | GOSSIP of GossipMsg
@@ -52,7 +54,9 @@ type ReceiveType =
     | STOPRECV of string
     | INFORMFINISH of int
 
+
 type MainNodeType = 
-    | RECORDSEND of int * int
+    | RECORDNODE of NodeInfos
+    | STOPSYSTEM
 
 

@@ -135,13 +135,14 @@ let NodeFunction (nodeMailbox:Actor<ReceiveType>) =
     }
     let mutable recvCount = 0
     let mutable nodeName = "unset"
+    
+    let mutable originalNeighborSet = Set.empty
     let mutable neighborSet = Set.empty
     let mutable selfActor = select ("") system
     let mutable selfSendActor =  select ("") system
 
     let startTime = DateTime.Now.ToString("hh.mm.ss.ffffff");
     let actorTime = System.Diagnostics.Stopwatch()
-    printfn "%A" startTime
     actorTime.Start()
     
     let rec loop () = actor {
@@ -153,7 +154,7 @@ let NodeFunction (nodeMailbox:Actor<ReceiveType>) =
             nodeParams <- param
             nodeName <- nodeParams.SystemParams.Topology + "-" + Convert.ToString(nodeParams.NodeIdx)
             neighborSet <- creatNeighborSet(nodeParams.NodeIdx, nodeParams.SystemParams.NumberOfNodes, nodeParams.SystemParams.Topology)
-
+            originalNeighborSet <- neighborSet
             selfActor <- select ("/user/" + string nodeName) system
             let senderName = nodeName + "-sender"
             selfSendActor <- select ("/user/" + string senderName) system
@@ -164,25 +165,23 @@ let NodeFunction (nodeMailbox:Actor<ReceiveType>) =
             let senderName = sender.Path.Name.ToString()
             if nodeParams.SystemParams.GossipAlgo = AlgoType.RANDOM then
                 recvCount <- recvCount + 1
-                if recvCount <= systemLimitParams.randomLimit then
+                if recvCount < systemLimitParams.randomLimit then
                     if recvCount = 1 then 
                         // start to be a sender actor
                         let senderName = nodeName + "-sender" 
                         let senderActor = spawn system senderName randomSenderFunction
                         senderActor <! STARTSENDER(nodeParams.NodeIdx, neighborSet, gossipMsg, topology) 
-                    let actionStr = sprintf "recieve rumor msg from %s, receive count %d" senderName recvCount
-                    selfActor <! WAITING actionStr
-                else
+                    printfn "recieve rumor msg from %s, receive count %d" senderName recvCount
+                    selfActor <! WAITING ""
+                elif recvCount = systemLimitParams.randomLimit then
+                    printfn "recieve rumor msg from %s, stop recv" senderName
                     selfActor <! STOPRECV ""
-        | WAITING str ->
-            if nodeParams.NodeIdx = printTargetIdx then
-                printfn "[%s] WAITING state, prev action - %s" nodeName str
+        | WAITING str -> ()
         | STOPRECV str ->
             // inform neighbors
             let topology = nodeParams.SystemParams.Topology
-            if nodeParams.NodeIdx = printTargetIdx then
-                printfn "[%s] receive all the rumors" nodeName
-            for i in Set.toList(neighborSet) do
+            printfn "[%s] receive all the rumors" nodeName
+            for i in Set.toList(originalNeighborSet) do
                 let neigborName = topology + "-" + i.ToString()
                 let nActor = select ("/user/" + string neigborName) system
                 nActor <! INFORMFINISH (nodeParams.NodeIdx)
@@ -247,7 +246,7 @@ let MainFunction (mainMailbox:Actor<MainNodeType>) =
             if nodeInfoList.Length = argvParams.NumberOfNodes then
                 for r in nodeInfoList do
                     let recordLine = sprintf "%d, %d, %d, %s, %s" r.NodeIdx r.SendCount r.RunTime r.StartTime r.EndTime
-                    System.IO.File.AppendAllLinesAsync(recordFilePath, [recordLine])
+                    System.IO.File.AppendAllLinesAsync(recordFilePath, [recordLine]) |> ignore
                 selfActor <! STOPSYSTEM
         | STOPSYSTEM ->
             printfn "STOP SYSTEM SIGNAL" 

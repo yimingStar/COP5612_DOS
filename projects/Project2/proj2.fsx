@@ -171,11 +171,8 @@ let closeNode(mainActor, selfActor, selfSendActor, nodeIdx, sendCount, change, r
     let mutable retry = 0
     let infos: NodeInfos = {
        NodeIdx = nodeIdx
-       SendCount = sendCount
-       RatioChange = change
        RunTime = runTime // actorTime.ElapsedMilliseconds
        StartTime = startTime
-       EndTime = endTime
     }
 
     selfSendActor <! PoisonPill.Instance
@@ -188,7 +185,7 @@ let closeNode(mainActor, selfActor, selfSendActor, nodeIdx, sendCount, change, r
     try
         Async.RunSynchronously(sendNodeInfo, systemLimitParams.systemTimeOut)
     with :? System.TimeoutException ->
-        if retry <= 2 then
+        if retry <= 3 then
             Async.RunSynchronously(sendNodeInfo, systemLimitParams.systemTimeOut)
     selfActor <! PoisonPill.Instance
 
@@ -259,11 +256,10 @@ let NodeFunction (nodeMailbox:Actor<ReceiveType>) =
                     if recvCount = 1 then 
                         // start to be a sender actor
                         selfSendActor <! STARTSENDER(nodeParams.NodeIdx, neighborSet, gossipMsg, topology, nodeParams.SystemParams.GossipAlgo)
-                    if recvCount % 3 = 0 then     
-                        printfn "[%s] recieve rumor msg from %s, receive count %d" nodeName senderName recvCount
+                    // if recvCount % 3 = 0 then     
+                    //     printfn "[%s] recieve rumor msg from %s, receive count %d" nodeName senderName recvCount
                     selfActor <! WAITING ""
                 elif recvCount = systemLimitParams.randomLimit && not stopRecv then
-                    // printfn "recieve rumor msg from %s, stop recv" senderName
                     selfActor <! STOPRECV ""
         
         | PUSHSUM(pushSumMsg: PushSumMsg) ->
@@ -324,18 +320,7 @@ let NodeFunction (nodeMailbox:Actor<ReceiveType>) =
             selfSendActor <! UPDATESET(neighborSet) 
             
             if neighborSet.IsEmpty && not stopSend then
-                // printfn "[%s]'s close send actor, all neighbor is finish" nodeName
-                // close send actor, all neighbor is finish
-                let getSendCount = async { 
-                    let! response = selfSendActor <? STOPSEND
-                    stopSend <- true
-                    return response 
-                }
-                try
-                    sendCount <- Async.RunSynchronously(getSendCount, systemLimitParams.systemTimeOut) |> int
-                with :? System.TimeoutException ->
-                    sendCount <- -1
-                    
+                stopSend <- true
             selfActor <! WAITING ""
         return! loop ()
     }
@@ -343,25 +328,21 @@ let NodeFunction (nodeMailbox:Actor<ReceiveType>) =
 
 
 let MainFunction (mainMailbox:Actor<MainNodeType>) =
-    let mutable nodeInfoList = []
-    let mutable selfActor = select ("/user/main") system
-    let mutable totalSendTime = 0
-    let mutable writeFile = false
-
+    let mutable closNodeCount = 0
     let rec loop () = actor {
         let! (msg: MainNodeType) = mainMailbox.Receive()
         match msg with
         | RECORDNODE(info: NodeInfos) ->
-            // printfn "info %A" info
-            let recordLine = sprintf "%d, %d, %f, %d, %s, %s" info.NodeIdx info.SendCount info.RatioChange info.RunTime info.StartTime info.EndTime
+            let recordLine = sprintf "%d, %f, %d, %s" info.NodeIdx ((float)info.RunTime/(float)systemLimitParams.roundDuration) info.RunTime info.StartTime
             System.IO.File.AppendAllLines(recordFilePath, [recordLine]) |> ignore
-            totalSendTime <- totalSendTime + info.SendCount
-            
-            if nodeInfoList.Length = argvParams.NumberOfNodes && not writeFile then
-                selfActor <! STOPSYSTEM
-        | STOPSYSTEM ->
-            printfn "STOP SYSTEM SIGNAL" 
-            mainMailbox.Context.System.Terminate() |> ignore
+            closNodeCount <- closNodeCount + 1
+            printfn "info count %d" closNodeCount
+            if (float)closNodeCount > 0.8*(float)argvParams.NumberOfNodes then
+                printfn "80 percent node is successfully close"
+
+            if closNodeCount = argvParams.NumberOfNodes then
+                printfn "STOP SYSTEM SIGNAL" 
+                mainMailbox.Context.System.Terminate() |> ignore
         return! loop ()
     }
     loop()

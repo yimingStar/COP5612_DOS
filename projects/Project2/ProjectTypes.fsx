@@ -22,11 +22,8 @@ type NodeParams = {
 
 type NodeInfos = {
     NodeIdx: int
-    SendCount: int
-    RatioChange: double
     RunTime: int64
     StartTime: string
-    EndTime: string
 }
 
 
@@ -63,6 +60,5 @@ type ReceiveType =
 
 type MainNodeType = 
     | RECORDNODE of NodeInfos
-    | STOPSYSTEM
 
 

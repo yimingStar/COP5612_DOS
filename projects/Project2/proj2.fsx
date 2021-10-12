@@ -373,19 +373,21 @@ let createNetwork(param) =
 
 let sendStartMessage(systemParams: ArgvInputs, content: string, startIdx: int) =
     let groupSize = 100.0;
-    let groupCount = (System.Math.Ceiling((float)argvParams.NumberOfNodes/groupSize) - 1.0) |> int
+    let groupCount = System.Math.Ceiling( ((float)argvParams.NumberOfNodes/groupSize)-1.0 ) |> int
     let mutable startIdx = 1
     let mutable endIdx = 1
     let mutable targetIdx = 1
 
     for i = 0 to groupCount do
-        startIdx <- startIdx + i*100
+        startIdx <- 1 + i*100
         endIdx <- (i+1)*100
         if argvParams.NumberOfNodes < endIdx then
             endIdx <- argvParams.NumberOfNodes
+        
+        printfn  "groupC %d, group i= %d, random choose target seed %d, %d" groupCount i startIdx endIdx
         targetIdx <- Random().Next(startIdx, endIdx)
         
-        printfn  "group i= %d, random choose target seed %d, %d, %d" i startIdx endIdx targetIdx
+        printfn  "groupC %d, group i= %d, random choose target seed %d, %d, %d" groupCount i startIdx endIdx targetIdx
         
         let targetSeed = systemParams.Topology + "-" + Convert.ToString(targetIdx)
         if argvParams.GossipAlgo = AlgoType.RANDOM then

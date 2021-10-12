@@ -373,7 +373,7 @@ let createNetwork(param) =
 
 let sendStartMessage(systemParams: ArgvInputs, content: string, startIdx: int) =
     let groupSize = 100.0;
-    let groupCount = System.Math.Ceiling((float)argvParams.NumberOfNodes/groupSize) - 1.0 |> int
+    let groupCount = (System.Math.Ceiling((float)argvParams.NumberOfNodes/groupSize) - 1.0) |> int
     let mutable startIdx = 1
     let mutable endIdx = 1
     let mutable targetIdx = 1

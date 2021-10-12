@@ -137,7 +137,7 @@ let SenderFunction (nodeMailbox:Actor<SenderType>) =
                 Async.RunSynchronously(task, systemLimitParams.systemTimeOut)
                 sendCount <- sendCount + 1
             with :? System.TimeoutException ->
-                ()
+                sendCount <- sendCount - 1
             selfActor <! RSEND
         | STOPSEND ->
             let sender = nodeMailbox.Sender()
@@ -160,7 +160,11 @@ let SenderFunction (nodeMailbox:Actor<SenderType>) =
             giveSumMsg <- pushSumMsg
         | PSSEND ->
             let task = PushSumToNeighbor(nodeIdx, nodeName, neighborSet, giveSumMsg, topology)
-            Async.RunSynchronously task
+            try
+                Async.RunSynchronously(task, systemLimitParams.systemTimeOut)
+                sendCount <- sendCount + 1
+            with :? System.TimeoutException ->
+                sendCount <- sendCount - 1
             sendCount <- sendCount + 1
             selfActor <! PSSEND
         return! loop ()
@@ -368,18 +372,33 @@ let createNetwork(param) =
 
 
 let sendStartMessage(systemParams: ArgvInputs, content: string, startIdx: int) =
-    let startNodesName = systemParams.Topology + "-" + Convert.ToString(startIdx)
-    if argvParams.GossipAlgo = AlgoType.RANDOM then
-        let gossipMsg: GossipMsg = {
-            Content = content
-        }   
-        system.ActorSelection(sprintf "/user/%s" startNodesName) <! GOSSIP gossipMsg
-    elif argvParams.GossipAlgo = AlgoType.PUSHSUM then
-        let pushSumMsg: PushSumMsg = {
-            PushSumS = 0.0
-            PushSumW = 0.0
-        }   
-        system.ActorSelection(sprintf "/user/%s" startNodesName) <! PUSHSUM pushSumMsg
+    let groupSize = 100.0;
+    let groupCount = System.Math.Ceiling((float)argvParams.NumberOfNodes/groupSize) - 1.0 |> int
+    let mutable startIdx = 1
+    let mutable endIdx = 1
+    let mutable targetIdx = 1
+
+    for i = 0 to groupCount do
+        startIdx <- startIdx + i*100
+        endIdx <- (i+1)*100
+        if argvParams.NumberOfNodes < endIdx then
+            endIdx <- argvParams.NumberOfNodes
+        targetIdx <- Random().Next(startIdx, endIdx)
+        
+        printfn  "group i= %d, random choose target seed %d, %d, %d" i startIdx endIdx targetIdx
+        
+        let targetSeed = systemParams.Topology + "-" + Convert.ToString(targetIdx)
+        if argvParams.GossipAlgo = AlgoType.RANDOM then
+            let gossipMsg: GossipMsg = {
+                Content = content
+            }   
+            system.ActorSelection(sprintf "/user/%s" targetSeed) <! GOSSIP gossipMsg
+        elif argvParams.GossipAlgo = AlgoType.PUSHSUM then
+            let pushSumMsg: PushSumMsg = {
+                PushSumS = 0.0
+                PushSumW = 0.0
+            }   
+            system.ActorSelection(sprintf "/user/%s" targetSeed) <! PUSHSUM pushSumMsg
 
 
 let setMainActor() =

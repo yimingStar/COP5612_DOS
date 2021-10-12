@@ -24,9 +24,6 @@ let port = "5567"
 let config =
     ConfigurationFactory.ParseString(
             @"akka {
-                loggers = Akka.Event.DefaultLogger, Akka
-                loglevel = DEBUG
-
                 actor.provider = remote
                 remote.helios.tcp {
                     hostname = " + hostIP + "
@@ -287,10 +284,13 @@ let NodeFunction (nodeMailbox:Actor<ReceiveType>) =
                 selfSendActor <! UDATESW(newPushSum)
             
             let change: double = abs((sVal / wVal) - (prevS/prevW))
-            let task = async {
-                printfn "[%s] gain value, original value %f, new value %f, change value %f, count %d" nodeName (sVal / wVal) (prevS/prevW) change inRangCount
-            }
-            Async.RunSynchronously(task)
+            // let task = async {
+            //     printfn "[%s] gain value, original value %f, new value %f, change value %f, count %d" nodeName (sVal / wVal) (prevS/prevW) change inRangCount
+            // }
+            // try
+            //     Async.RunSynchronously(task, 500)
+            // with :? System.TimeoutException ->
+            //     ()
                 
             if change <= systemLimitParams.pushSumRange then
                 inRangCount <- inRangCount + 1
@@ -311,8 +311,6 @@ let NodeFunction (nodeMailbox:Actor<ReceiveType>) =
         | STOPRECV str ->
             // inform neighbors
             stopRecv <- true
-            // if nodeParams.NodeIdx = printTargetIdx then 
-            //     printfn "[%s] receive all the rumors, check (%A,%A), %A" nodeName stopRecv stopSend originalNeighborSet
             for i in Set.toList(originalNeighborSet) do
                 let neigborName = topology + "-" + i.ToString()
                 let nActor = select ("/user/" + string neigborName) system
@@ -321,24 +319,22 @@ let NodeFunction (nodeMailbox:Actor<ReceiveType>) =
             selfActor <! WAITING ""
 
         | INFORMFINISH(neighborIdx: int) ->
-            // if nodeParams.NodeIdx = printTargetIdx then
-            //     printfn "[%s]'s neigbor %d is done" nodeName neighborIdx
-            // update neighborSet and pass it to sender actor
             neighborSet <- neighborSet.Remove(neighborIdx)
             selfSendActor <! UPDATESET(neighborSet) 
             
             if neighborSet.IsEmpty && not stopSend then
-                printfn "[%s]'s close send actor, all neighbor is finish" nodeName
+                // printfn "[%s]'s close send actor, all neighbor is finish" nodeName
                 // close send actor, all neighbor is finish
                 let getSendCount = async { 
                     let! response = selfSendActor <? STOPSEND
-                    printfn "response %A" response
                     stopSend <- true
-                    // if nodeParams.SystemParams.GossipAlgo = AlgoType.PUSHSUM then
-                    //     stopRecv <- true
                     return response 
                 }
-                sendCount <- Async.RunSynchronously(getSendCount, systemLimitParams.systemTimeOut) |> int
+                try
+                    sendCount <- Async.RunSynchronously(getSendCount, systemLimitParams.systemTimeOut) |> int
+                with :? System.TimeoutException ->
+                    sendCount <- -1
+                    
             selfActor <! WAITING ""
         return! loop ()
     }
@@ -355,7 +351,7 @@ let MainFunction (mainMailbox:Actor<MainNodeType>) =
         let! (msg: MainNodeType) = mainMailbox.Receive()
         match msg with
         | RECORDNODE(info: NodeInfos) ->
-            printfn "info %A" info
+            // printfn "info %A" info
             nodeInfoList <- nodeInfoList @ [info]
             totalSendTime <- totalSendTime + info.SendCount
             

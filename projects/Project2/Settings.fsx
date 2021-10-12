@@ -5,6 +5,6 @@ module systemLimitParams =
     let pushSumLimit = 3
     
     let roundDuration = 50 //ms
-    let systemTimeOut = 3000 // ms
+    let systemTimeOut = 2000 // ms
 
 let recordFilePath = @".\nodeInfos.txt"

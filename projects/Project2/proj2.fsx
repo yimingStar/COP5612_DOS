@@ -133,8 +133,11 @@ let SenderFunction (nodeMailbox:Actor<SenderType>) =
             neighborSet <- newNSet
         | RSEND ->
             let task = GossipToNeighbor(nodeIdx, nodeName, neighborSet, gossipMsg, topology)
-            Async.RunSynchronously task
-            sendCount <- sendCount + 1
+            try
+                Async.RunSynchronously(task, systemLimitParams.systemTimeOut)
+                sendCount <- sendCount + 1
+            with :? System.TimeoutException ->
+                ()
             selfActor <! RSEND
         | STOPSEND ->
             let sender = nodeMailbox.Sender()
@@ -165,6 +168,7 @@ let SenderFunction (nodeMailbox:Actor<SenderType>) =
     loop()
 
 let closeNode(mainActor, selfActor, selfSendActor, nodeIdx, sendCount, change, runTime, startTime, endTime) =
+    let mutable retry = 0
     let infos: NodeInfos = {
        NodeIdx = nodeIdx
        SendCount = sendCount
@@ -178,9 +182,14 @@ let closeNode(mainActor, selfActor, selfSendActor, nodeIdx, sendCount, change, r
     let sendNodeInfo = async { 
         // let! response = mainActor <? RECORDNODE(infos)
         // return response
+        retry <- retry + 1
         mainActor <! RECORDNODE(infos)
     }
-    Async.RunSynchronously(sendNodeInfo, systemLimitParams.systemTimeOut)
+    try
+        Async.RunSynchronously(sendNodeInfo, systemLimitParams.systemTimeOut)
+    with :? System.TimeoutException ->
+        if retry <= 2 then
+            Async.RunSynchronously(sendNodeInfo, systemLimitParams.systemTimeOut)
     selfActor <! PoisonPill.Instance
 
 
@@ -250,8 +259,8 @@ let NodeFunction (nodeMailbox:Actor<ReceiveType>) =
                     if recvCount = 1 then 
                         // start to be a sender actor
                         selfSendActor <! STARTSENDER(nodeParams.NodeIdx, neighborSet, gossipMsg, topology, nodeParams.SystemParams.GossipAlgo)
-                    // if nodeParams.NodeIdx = printTargetIdx then     
-                    //     printfn "[%s] recieve rumor msg from %s, receive count %d" nodeName senderName recvCount
+                    if recvCount % 3 = 0 then     
+                        printfn "[%s] recieve rumor msg from %s, receive count %d" nodeName senderName recvCount
                     selfActor <! WAITING ""
                 elif recvCount = systemLimitParams.randomLimit && not stopRecv then
                     // printfn "recieve rumor msg from %s, stop recv" senderName
@@ -284,14 +293,6 @@ let NodeFunction (nodeMailbox:Actor<ReceiveType>) =
                 selfSendActor <! UDATESW(newPushSum)
             
             let change: double = abs((sVal / wVal) - (prevS/prevW))
-            // let task = async {
-            //     printfn "[%s] gain value, original value %f, new value %f, change value %f, count %d" nodeName (sVal / wVal) (prevS/prevW) change inRangCount
-            // }
-            // try
-            //     Async.RunSynchronously(task, 500)
-            // with :? System.TimeoutException ->
-            //     ()
-                
             if change <= systemLimitParams.pushSumRange then
                 inRangCount <- inRangCount + 1
                 if inRangCount = systemLimitParams.pushSumLimit && not stopRecv then
@@ -352,15 +353,11 @@ let MainFunction (mainMailbox:Actor<MainNodeType>) =
         match msg with
         | RECORDNODE(info: NodeInfos) ->
             // printfn "info %A" info
-            nodeInfoList <- nodeInfoList @ [info]
+            let recordLine = sprintf "%d, %d, %f, %d, %s, %s" info.NodeIdx info.SendCount info.RatioChange info.RunTime info.StartTime info.EndTime
+            System.IO.File.AppendAllLines(recordFilePath, [recordLine]) |> ignore
             totalSendTime <- totalSendTime + info.SendCount
             
             if nodeInfoList.Length = argvParams.NumberOfNodes && not writeFile then
-                writeFile <- true
-                printfn "write FILE !!!!!!!!!!!!!! %d" nodeInfoList.Length
-                for r in nodeInfoList do
-                    let recordLine = sprintf "%d, %d, %f, %d, %s, %s" r.NodeIdx r.SendCount r.RatioChange r.RunTime r.StartTime r.EndTime
-                    System.IO.File.AppendAllLinesAsync(recordFilePath, [recordLine]) |> ignore
                 selfActor <! STOPSYSTEM
         | STOPSYSTEM ->
             printfn "STOP SYSTEM SIGNAL" 

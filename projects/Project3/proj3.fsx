@@ -5,6 +5,7 @@
 
 open System
 open System.Diagnostics
+open System.Security.Cryptography
 open Akka.Actor
 open Akka.Configuration
 open Akka.FSharp
@@ -38,15 +39,32 @@ let config =
 
 // additional adding and failing nodes
 // 6. adding and failing few servers
+
+let system = System.create "proj3Master" config
+
+let hashWithShaOne(originalStr: string) =
+    let hashedBytes = originalStr |> System.Text.Encoding.UTF8.GetBytes |> (new SHA1Managed()).ComputeHash
+    let hashedInt = BitConverter.ToUInt16(hashedBytes, 0) |> int
+    hashedInt
+
+
+let matchNodeToRing(nodeName: string) = 
+    let hashedInt = hashWithShaOne(nodeName)
+    let identifier = hashedInt % systemParams.NumOfIdentifier
+    printfn "nodeName %s, hash %d into identifier: %d " nodeName hashedInt identifier
+
+
 let setIdentifier(numberOfNode: int) = 
+    // The identifier length m must be large enough to make the probability of two nodes or keys hashing to the same identifier negligible. 
     let mutable numOfIdentifier = 64
     if(numberOfNode >= 20 && numberOfNode < 64) then
         numOfIdentifier <- 128
     else if(numberOfNode >= 64 && numberOfNode < 128) then
         numOfIdentifier <- 256
-    else
+    else if(numberOfNode >= 128) then
         numOfIdentifier <- 1024
     numOfIdentifier
+
 
 let setInputs(argv: string[])  = 
     let setParams: SystemParams = {
@@ -56,10 +74,36 @@ let setInputs(argv: string[])  =
     }
     setParams
 
-let system = System.create "proj3Master" config
+
+let NodeFunction (nodeMailbox:Actor<NodeActions>) =
+    let rec loop () = actor {
+        let! (msg: NodeActions) = nodeMailbox.Receive()
+        let sender = nodeMailbox.Sender()
+        match msg with
+        | INIT ->
+            let nodeName = nodeMailbox.Self.Path.Name;
+            matchNodeToRing(nodeName)
+        | STORE(key:string, value:string) -> ()
+        return! loop()
+    }
+    loop()
+
+
+let createNetwork(param) =
+    match box param with
+    | :? SystemParams as param ->
+        for i = 1 to param.NumOfNodes do
+            let name = "Server-" + Convert.ToString(i)
+            let networkNode = spawn system name NodeFunction
+            networkNode <! INIT
+
+    | _ ->  failwith "Invalid input variables to build a network"
+
+
 let argv = fsi.CommandLineArgs
 printfn "input arguments: %A" (argv) 
 
-systemParams = setInputs(argv)
+systemParams <- setInputs(argv)
+createNetwork(systemParams)
+
 System.Console.ReadLine() |> ignore
-// The identifier length m must be large enough to make the probability of two nodes or keys hashing to the same identifier negligible. 

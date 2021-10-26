@@ -5,6 +5,6 @@ type SystemParams = {
 }   
 
 
-// type NodeParams = {
-
-// }   
+type NodeActions = 
+    | INIT
+    | STORE of string*string

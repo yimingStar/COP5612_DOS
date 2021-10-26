@@ -14,6 +14,7 @@ open ProjectTypes
 let mutable systemParams: SystemParams = {
     NumOfNodes = 0
     NumOfRequest = 0
+    PowM = 0
     NumOfIdentifier = 0
 }
 
@@ -34,11 +35,12 @@ let config =
 // 1. Build the Chord ring
 // 2. Input set the nodes on ring
 // 3. Assign the key values on the nodes
-// 4. build the finger lookup table
-// 5. every node start to request for K key-value (Random?)
+// 4. build the finger lookup table for each node
+// 5. start to assign key-values from random point
+// 6. Each node start to request key values
 
 // additional adding and failing nodes
-// 6. adding and failing few servers
+// 7. adding and failing few servers
 
 let system = System.create "proj3Master" config
 
@@ -57,35 +59,118 @@ let matchNodeToRing(nodeName: string) =
 
 let setIdentifier(numberOfNode: int) = 
     // The identifier length m must be large enough to make the probability of two nodes or keys hashing to the same identifier negligible. 
-    let mutable numOfIdentifier = 64
-    if(numberOfNode >= 20 && numberOfNode < 64) then
-        numOfIdentifier <- 128
+    let mutable m = 0
+    if(numberOfNode <= 4) then
+        m <- 3 // 8
+    elif(numberOfNode >= 4 && numberOfNode < 16) then
+        m <- 5 // 32
+    elif(numberOfNode >= 16 && numberOfNode < 64) then
+        m <- 7 // 128
     else if(numberOfNode >= 64 && numberOfNode < 128) then
-        numOfIdentifier <- 256
+        m <- 8 // 256
     else if(numberOfNode >= 128) then
-        numOfIdentifier <- 1024
-    numOfIdentifier
+        m <- 10 // 1024
+    m
 
 
 let setInputs(argv: string[])  = 
     let setParams: SystemParams = {
         NumOfNodes = argv.[1] |> int
         NumOfRequest = argv.[2] |> int
-        NumOfIdentifier = setIdentifier(argv.[1] |> int)
+        PowM = setIdentifier(argv.[1] |> int)
+        NumOfIdentifier = 2.0 ** (setIdentifier(argv.[1] |> int) |> float) |> int
     }
     setParams
 
 
+let isBetween(id, startId, endId) = 
+    let mutable result = false
+    if startId < endId then
+        if startId < id && id < endId then
+            result <- true
+    elif endId < startId then
+        if (startId < id && id <= systemParams.NumOfIdentifier-1) || (0 <= id && id < endId) then
+            result <- true
+    result
+
+
+let getFingerKeyId(nodeId: int, powNumber:int) = 
+    let move = (2.0**(powNumber |> float)) |> int
+    (nodeId + move) % systemParams.NumOfIdentifier
+
+
 let NodeFunction (nodeMailbox:Actor<NodeActions>) =
-    let mutable id = -1
+    let mutable selfActor = select ("") system
+    let mutable nodeId = -1
+
+    let defaultFingerCol:FingerCol  = {
+        Idx = -1
+        KeyId = -1
+        Succesor = -1
+    }
+    let finger = Array.create (systemParams.PowM) (defaultFingerCol)
+    let mutable nextFingerIdx = 0
+    
+    let mutable waitingTask = Set.empty // waiting to know the successor of id = k
+    let mutable finderKeyIdMap = Map.empty
+
+    // finger table
     let rec loop () = actor {
         let! (msg: NodeActions) = nodeMailbox.Receive()
         let sender = nodeMailbox.Sender()
         match msg with
         | INIT ->
-            let nodeName = nodeMailbox.Self.Path.Name
-            id <- matchNodeToRing(nodeName)
-        | STORE(key:string, value:string) -> ()
+            nodeId <- (nodeMailbox.Self.Path.Name |> int)
+            selfActor <- select ("/user/" + Convert.ToString(nodeId)) system
+            // set the finger table checkID and check Range
+            for idx in 0 .. finger.Length-1 do
+                let keyId = getFingerKeyId(nodeId, idx)
+                let newCol: FingerCol = {
+                    Idx = idx
+                    KeyId = keyId
+                    Succesor = nodeId
+                }
+                finger.[idx] <- newCol
+                finderKeyIdMap <- finderKeyIdMap.Add(keyId, idx)
+            if nodeId = 1 then
+                // printfn "%d - \n" nodeId 
+                printfn "%A" finger
+
+        | FixFinger -> 
+            // periodacally send msg to update the finger table
+            // 1. Send message update FindSuccessor(finger.[nextFingerIdx].KeyId, nodeId)
+            // 2. Set the task to waitingList
+            let task = async {
+                let renewId = finger.[nextFingerIdx].KeyId
+                waitingTask <- waitingTask.Add(renewId)
+                selfActor <! FindSuccesor(renewId, nodeId)
+                nextFingerIdx <- (nextFingerIdx + 1) % systemParams.PowM
+                do! Async.Sleep 1000
+            }
+            Async.RunSynchronously(task)
+            selfActor <! FixFinger
+
+        | FindSuccesor(id:int, requestId:int) ->
+            // The request ancestor is requestId -> if find pass it back to requestId
+            // 1. Find Succesor int id is between n()
+            if isBetween(id, nodeId, finger.[0].Succesor+1) then
+                let requestActor = select ("/user/" + Convert.ToString(requestId)) system
+                requestActor <! ConfirmSUCCESSOR(id, nodeId)
+            // unfound continue pass message to find it
+
+        | ConfirmSUCCESSOR(id: int, nodeId: int) ->
+            // get id's successor as nodeId
+            waitingTask <- waitingTask.Remove(id)
+            // check if this key is in the Finger Table
+            if finderKeyIdMap.ContainsKey(id) then
+                let fingerIdx = finderKeyIdMap.Item(id)
+                let newCol: FingerCol = {
+                    Idx = finger.[fingerIdx].Idx
+                    KeyId = finger.[fingerIdx].KeyId
+                    Succesor = nodeId
+                }
+                finger.[fingerIdx] <- newCol
+
         return! loop()
     }
     loop()
@@ -95,8 +180,11 @@ let createNetwork(param) =
     match box param with
     | :? SystemParams as param ->
         for i = 1 to param.NumOfNodes do
-            let name = "Server-" + Convert.ToString(i)
-            let networkNode = spawn system name NodeFunction
+            let inputStr = "Create-Server-#" + Convert.ToString(i)
+            let nodeId = matchNodeToRing(inputStr)
+            let nodeName = Convert.ToString(nodeId)
+            // set id as the 
+            let networkNode = spawn system nodeName NodeFunction
             networkNode <! INIT
 
     | _ ->  failwith "Invalid input variables to build a network"
@@ -106,6 +194,7 @@ let argv = fsi.CommandLineArgs
 printfn "input arguments: %A" (argv) 
 
 systemParams <- setInputs(argv)
+printfn "system systemParams: %A" (systemParams)
 createNetwork(systemParams)
 
 System.Console.ReadLine() |> ignore

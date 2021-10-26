@@ -51,7 +51,8 @@ let hashWithShaOne(originalStr: string) =
 let matchNodeToRing(nodeName: string) = 
     let hashedInt = hashWithShaOne(nodeName)
     let identifier = hashedInt % systemParams.NumOfIdentifier
-    printfn "nodeName %s, hash %d into identifier: %d " nodeName hashedInt identifier
+    // printfn "nodeName %s, hash %d into identifier: %d " nodeName hashedInt identifier
+    identifier
 
 
 let setIdentifier(numberOfNode: int) = 
@@ -76,13 +77,14 @@ let setInputs(argv: string[])  =
 
 
 let NodeFunction (nodeMailbox:Actor<NodeActions>) =
+    let mutable id = -1
     let rec loop () = actor {
         let! (msg: NodeActions) = nodeMailbox.Receive()
         let sender = nodeMailbox.Sender()
         match msg with
         | INIT ->
-            let nodeName = nodeMailbox.Self.Path.Name;
-            matchNodeToRing(nodeName)
+            let nodeName = nodeMailbox.Self.Path.Name
+            id <- matchNodeToRing(nodeName)
         | STORE(key:string, value:string) -> ()
         return! loop()
     }

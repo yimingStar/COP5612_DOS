@@ -43,7 +43,7 @@ let config =
 // 7. adding and failing few servers
 
 let system = System.create "proj3Master" config
-let roundDuration = 3000
+let roundDuration = 300
 
 let createServerNumberStr(serverNum: int) = 
     let numberStr = "Server-#" + Convert.ToString(serverNum)
@@ -137,7 +137,12 @@ let NodeFunction (nodeMailbox:Actor<NodeActions>) =
             // printfn "NodeNum: %d, chordId %d, successor %d, finger %A" nodeNumber chordId successor finger
             // set the successor
             successor <- chordId
-            if nodeNumber <> 1 then 
+            if nodeNumber = 1 then
+                let prevNodeNumber = nodeNumber+1
+                let prevNodeName = createServerNumberStr(prevNodeNumber)
+                let prevChordId = getNodeChordId(prevNodeName)
+                successor <- prevChordId
+            else 
                 // select any node for finding the successor
                 let prevNodeNumber = nodeNumber-1
                 let prevNodeName = createServerNumberStr(prevNodeNumber)
@@ -146,9 +151,9 @@ let NodeFunction (nodeMailbox:Actor<NodeActions>) =
                     successor <- prevChordId
                 else
                     // printfn "NodeNum: %d, chordId %d send Join to prevNodeName %s with chordID %d" nodeNumber chordId prevNodeName prevChordId
-                    let chordNode = select ("/user/" + Convert.ToString(prevChordId)) system
+                    let randomChordNode = select ("/user/" + Convert.ToString(prevChordId)) system
                     waitingTask <- waitingTask.Add(chordId)
-                    chordNode <! FindSuccesor(chordId, chordId)
+                    randomChordNode <! FindSuccesor(chordId, chordId)
             
             // set the finger table checkID and check Range
             let mutable initialFingerSuccessor = chordId
@@ -169,12 +174,17 @@ let NodeFunction (nodeMailbox:Actor<NodeActions>) =
             // 1. Send message update FindSuccessor(finger.[nextFingerIdx].KeyId, chordId)
             // 2. Set the task to waitingList
             let task = async {
-                if nodeNumber = 2 then
-                    printfn "NodeNum: %d, chordId %d, successor %d, finger %A" nodeNumber chordId successor finger
-                let renewKeyId = finger.[nextFingerIdx].KeyId
-                waitingTask <- waitingTask.Add(renewKeyId)
-                selfActor <! FindSuccesor(renewKeyId, chordId)
+                // if nodeNumber = 2 then
+                //     printfn "NodeNum: %d, chordId %d, successor %d, finger %A" nodeNumber chordId successor finger
+                
                 nextFingerIdx <- (nextFingerIdx + 1) % systemParams.PowM
+                let renewKeyId = finger.[nextFingerIdx].KeyId
+                let targetSuccessor = finger.[nextFingerIdx].Succesor
+                
+                waitingTask <- waitingTask.Add(renewKeyId)
+                let targetActor = select ("/user/" + Convert.ToString(targetSuccessor)) system
+
+                targetActor <! FindSuccesor(renewKeyId, chordId)
                 do! Async.Sleep roundDuration
             }
             Async.RunSynchronously(task)
@@ -202,8 +212,8 @@ let NodeFunction (nodeMailbox:Actor<NodeActions>) =
             successorNode <! Notify(chordId) 
 
         | FindSuccesor(keyId:int, requestId:int) ->
-            if keyId = 2 then 
-                printfn "NodeNum: %d, chordId %d receive FindSuccesor(id: %d, sId: requestId: %d) check successor %d" nodeNumber chordId keyId requestId successor
+            // if keyId = 2 then 
+            //     printfn "NodeNum: %d, chordId %d receive FindSuccesor(id: %d, sId: requestId: %d) check successor %d" nodeNumber chordId keyId requestId successor
             // The request ancestor is requestId -> if find pass it back to requestId
             if isBetween(keyId, chordId, successor+1) then
                 let requestActor = select ("/user/" + Convert.ToString(requestId)) system
@@ -225,7 +235,8 @@ let NodeFunction (nodeMailbox:Actor<NodeActions>) =
 
         | ConfirmSUCCESSOR(keyId: int, setSuccessorId: int) ->
             // get id's successor as chordId
-            // printfn "NodeNum: %d, chordId %d receive ConfirmSUCCESSOR(id: %d, setSuccessorId: %d)" nodeNumber chordId keyId setSuccessorId
+            // if keyId = 2 then
+            //     printfn "NodeNum: %d, chordId %d receive ConfirmSUCCESSOR(id: %d, setSuccessorId: %d)" nodeNumber chordId keyId setSuccessorId
             waitingTask <- waitingTask.Remove(keyId)
             if keyId = chordId then
                 // update node successor
@@ -242,7 +253,9 @@ let NodeFunction (nodeMailbox:Actor<NodeActions>) =
                 finger.[fingerIdx] <- newCol
                 if fingerIdx = 0 then
                     successor <- setSuccessorId
+
             selfActor <! WAITING
+
         | Notify(targetChordId: int) ->
             if predecessor = -1 || isBetween(targetChordId, predecessor, chordId) then
                 predecessor <- targetChordId

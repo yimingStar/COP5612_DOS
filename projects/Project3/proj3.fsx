@@ -43,6 +43,12 @@ let config =
 // 7. adding and failing few servers
 
 let system = System.create "proj3Master" config
+let roundDuration = 3000
+
+let createServerNumberStr(serverNum: int) = 
+    let numberStr = "Server-#" + Convert.ToString(serverNum)
+    numberStr
+
 
 let hashWithShaOne(originalStr: string) =
     let hashedBytes = originalStr |> System.Text.Encoding.UTF8.GetBytes |> (new SHA1Managed()).ComputeHash
@@ -50,7 +56,7 @@ let hashWithShaOne(originalStr: string) =
     hashedInt
 
 
-let matchNodeToRing(nodeName: string) = 
+let getNodeChordId(nodeName: string) = 
     let hashedInt = hashWithShaOne(nodeName)
     let identifier = hashedInt % systemParams.NumOfIdentifier
     // printfn "nodeName %s, hash %d into identifier: %d " nodeName hashedInt identifier
@@ -94,14 +100,19 @@ let isBetween(id, startId, endId) =
     result
 
 
-let getFingerKeyId(nodeId: int, powNumber:int) = 
+let getFingerKeyId(chordId: int, powNumber:int) = 
     let move = (2.0**(powNumber |> float)) |> int
-    (nodeId + move) % systemParams.NumOfIdentifier
+    (chordId + move) % systemParams.NumOfIdentifier
 
 
 let NodeFunction (nodeMailbox:Actor<NodeActions>) =
     let mutable selfActor = select ("") system
-    let mutable nodeId = -1
+    let mutable chordId = -1
+    let mutable nodeNumber = -1
+    
+    // chord id of next server node
+    let mutable successor = -1
+    let mutable predecessor = -1
 
     let defaultFingerCol:FingerCol  = {
         Idx = -1
@@ -117,75 +128,140 @@ let NodeFunction (nodeMailbox:Actor<NodeActions>) =
     // finger table
     let rec loop () = actor {
         let! (msg: NodeActions) = nodeMailbox.Receive()
-        let sender = nodeMailbox.Sender()
         match msg with
-        | INIT ->
-            nodeId <- (nodeMailbox.Self.Path.Name |> int)
-            selfActor <- select ("/user/" + Convert.ToString(nodeId)) system
+        | INIT(setNodeNumber: int) ->
+            chordId <- (nodeMailbox.Self.Path.Name |> int)
+            nodeNumber <- setNodeNumber
+            selfActor <- select ("/user/" + Convert.ToString(chordId)) system
+
+            // printfn "NodeNum: %d, chordId %d, successor %d, finger %A" nodeNumber chordId successor finger
+            // set the successor
+            successor <- chordId
+            if nodeNumber <> 1 then 
+                // select any node for finding the successor
+                let prevNodeNumber = nodeNumber-1
+                let prevNodeName = createServerNumberStr(prevNodeNumber)
+                let prevChordId = getNodeChordId(prevNodeName)
+                if nodeNumber = 2 then
+                    successor <- prevChordId
+                else
+                    // printfn "NodeNum: %d, chordId %d send Join to prevNodeName %s with chordID %d" nodeNumber chordId prevNodeName prevChordId
+                    let chordNode = select ("/user/" + Convert.ToString(prevChordId)) system
+                    waitingTask <- waitingTask.Add(chordId)
+                    chordNode <! FindSuccesor(chordId, chordId)
+            
             // set the finger table checkID and check Range
+            let mutable initialFingerSuccessor = chordId
             for idx in 0 .. finger.Length-1 do
-                let keyId = getFingerKeyId(nodeId, idx)
+                let keyId = getFingerKeyId(chordId, idx)
                 let newCol: FingerCol = {
                     Idx = idx
                     KeyId = keyId
-                    Succesor = nodeId
+                    Succesor = initialFingerSuccessor
                 }
                 finger.[idx] <- newCol
                 finderKeyIdMap <- finderKeyIdMap.Add(keyId, idx)
-            if nodeId = 1 then
-                // printfn "%d - \n" nodeId 
-                printfn "%A" finger
+            selfActor <! FixFinger
+            selfActor <! Stabilize
 
         | FixFinger -> 
             // periodacally send msg to update the finger table
-            // 1. Send message update FindSuccessor(finger.[nextFingerIdx].KeyId, nodeId)
+            // 1. Send message update FindSuccessor(finger.[nextFingerIdx].KeyId, chordId)
             // 2. Set the task to waitingList
             let task = async {
-                let renewId = finger.[nextFingerIdx].KeyId
-                waitingTask <- waitingTask.Add(renewId)
-                selfActor <! FindSuccesor(renewId, nodeId)
+                if nodeNumber = 2 then
+                    printfn "NodeNum: %d, chordId %d, successor %d, finger %A" nodeNumber chordId successor finger
+                let renewKeyId = finger.[nextFingerIdx].KeyId
+                waitingTask <- waitingTask.Add(renewKeyId)
+                selfActor <! FindSuccesor(renewKeyId, chordId)
                 nextFingerIdx <- (nextFingerIdx + 1) % systemParams.PowM
-                do! Async.Sleep 1000
+                do! Async.Sleep roundDuration
             }
             Async.RunSynchronously(task)
             selfActor <! FixFinger
+        
+        | Stabilize -> 
+            let task = async {
+                if successor <> -1 then
+                    let successorNode = select ("/user/" + Convert.ToString(successor)) system
+                    successorNode <! AskPredecessor
+                do! Async.Sleep roundDuration
+            }
+            Async.RunSynchronously(task)
+            selfActor <! Stabilize
 
-        | FindSuccesor(id:int, requestId:int) ->
+        | AskPredecessor -> 
+            let sender = nodeMailbox.Sender()
+            sender <! GetPredecessor(predecessor)
+
+        | GetPredecessor(setPredecessor) ->
+            let x = setPredecessor;
+            if x <> -1 && isBetween(x, chordId, successor) then
+                successor <- x
+            let successorNode = select ("/user/" + Convert.ToString(successor)) system 
+            successorNode <! Notify(chordId) 
+
+        | FindSuccesor(keyId:int, requestId:int) ->
+            if keyId = 2 then 
+                printfn "NodeNum: %d, chordId %d receive FindSuccesor(id: %d, sId: requestId: %d) check successor %d" nodeNumber chordId keyId requestId successor
             // The request ancestor is requestId -> if find pass it back to requestId
-            // 1. Find Succesor int id is between n()
-            if isBetween(id, nodeId, finger.[0].Succesor+1) then
+            if isBetween(keyId, chordId, successor+1) then
                 let requestActor = select ("/user/" + Convert.ToString(requestId)) system
-                requestActor <! ConfirmSUCCESSOR(id, nodeId)
-            // unfound continue pass message to find it
+                // printfn "NodeNum: %d, chordId %d requestId: %d send back (%d, %d)" nodeNumber chordId requestId keyId chordId
+                requestActor <! ConfirmSUCCESSOR(keyId, successor)
+            else
+                // unfound continue pass message to find it, pass on the message through the circle   
+                let mutable passingChordId = chordId
+                let mutable inFingerTable = false
+                for i = systemParams.PowM-1 downto 0 do
+                    if isBetween(finger.[i].Succesor, chordId, keyId) && not inFingerTable then
+                        passingChordId <- finger.[i].Succesor
+                        inFingerTable <- true
 
-        | ConfirmSUCCESSOR(id: int, nodeId: int) ->
-            // get id's successor as nodeId
-            waitingTask <- waitingTask.Remove(id)
+                let passNode = select ("/user/" + Convert.ToString(passingChordId)) system                         
+                passNode <! FindSuccesor(keyId, requestId)
+                
+            selfActor <! WAITING
+
+        | ConfirmSUCCESSOR(keyId: int, setSuccessorId: int) ->
+            // get id's successor as chordId
+            // printfn "NodeNum: %d, chordId %d receive ConfirmSUCCESSOR(id: %d, setSuccessorId: %d)" nodeNumber chordId keyId setSuccessorId
+            waitingTask <- waitingTask.Remove(keyId)
+            if keyId = chordId then
+                // update node successor
+                successor <- setSuccessorId
+
             // check if this key is in the Finger Table
-            if finderKeyIdMap.ContainsKey(id) then
-                let fingerIdx = finderKeyIdMap.Item(id)
+            if finderKeyIdMap.ContainsKey(keyId) then
+                let fingerIdx = finderKeyIdMap.Item(keyId)
                 let newCol: FingerCol = {
                     Idx = finger.[fingerIdx].Idx
                     KeyId = finger.[fingerIdx].KeyId
-                    Succesor = nodeId
+                    Succesor = setSuccessorId
                 }
                 finger.[fingerIdx] <- newCol
-
+                if fingerIdx = 0 then
+                    successor <- setSuccessorId
+            selfActor <! WAITING
+        | Notify(targetChordId: int) ->
+            if predecessor = -1 || isBetween(targetChordId, predecessor, chordId) then
+                predecessor <- targetChordId
+            // while join
+        | WAITING -> ()
         return! loop()
     }
     loop()
-
 
 let createNetwork(param) =
     match box param with
     | :? SystemParams as param ->
         for i = 1 to param.NumOfNodes do
-            let inputStr = "Create-Server-#" + Convert.ToString(i)
-            let nodeId = matchNodeToRing(inputStr)
-            let nodeName = Convert.ToString(nodeId)
+            let inputStr = createServerNumberStr(i)
+            let chordId = getNodeChordId(inputStr)
+            let chordIdStr = Convert.ToString(chordId)
             // set id as the 
-            let networkNode = spawn system nodeName NodeFunction
-            networkNode <! INIT
+            let networkNode = spawn system chordIdStr NodeFunction
+            networkNode <! INIT(i)
 
     | _ ->  failwith "Invalid input variables to build a network"
 

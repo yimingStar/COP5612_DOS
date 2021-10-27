@@ -7,12 +7,16 @@ type SystemParams = {
 
 
 type NodeActions = 
-    | INIT
-    | STORE of string*string
+    | INIT of int
     | FixFinger
+    | Stabilize
+    | AskPredecessor
+    | GetPredecessor of int
     | FindSuccesor of int*int
-    | IsSUCCESSOR
     | ConfirmSUCCESSOR of int*int
+    | Notify of int
+    | WAITING
+    
 
 
 type FingerCol = {

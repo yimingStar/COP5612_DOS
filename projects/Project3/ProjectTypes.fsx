@@ -5,6 +5,9 @@ type SystemParams = {
     NumOfIdentifier: int
 }   
 
+type MessageType = 
+    | SYSTEM
+    | DATA
 
 type NodeActions = 
     | INIT of int
@@ -12,15 +15,17 @@ type NodeActions =
     | Stabilize
     | AskPredecessor
     | GetPredecessor of int
-    | FindSuccesor of int*int
-    | ConfirmSUCCESSOR of int*int
+    | FindSuccesor of int*int*MessageType
+    | ConfirmSUCCESSOR of int*int*MessageType
     | Notify of int
+    | StartRequestTask
     | WAITING
     
-
 
 type FingerCol = {
     Idx: int
     KeyId: int // id+2^i
     Succesor: int
 }
+
+

@@ -46,9 +46,16 @@ let system = System.create "proj3Master" config
 let roundDuration = 150
 let requestDuration = 1000
 let mutable prinfnServerNumber = -1
+let mutable firstServerChordID = -1
+let mutable secondServerChordID = -1
 
 let createServerNumberStr(serverNum: int) = 
-    let numberStr = "Server-#" + Convert.ToString(serverNum)
+    let mutable numberStr = "Server-#" + Convert.ToString(serverNum)
+    if serverNum > 2 then 
+        let randomStartIdx = Random().Next(0, 10)
+        let randomLength = Random().Next(16, 26)
+        let mutable randomString = Guid.NewGuid().ToString().Substring(randomStartIdx, randomLength)
+        numberStr <- numberStr + "-" + randomString
     numberStr
 
 
@@ -70,13 +77,15 @@ let setIdentifier(numberOfNode: int) =
     if(numberOfNode <= 4) then
         m <- 3 // 8
     elif(numberOfNode >= 4 && numberOfNode < 16) then
-        m <- 8 // 256
+        m <- 9 // 512 
     elif(numberOfNode >= 16 && numberOfNode < 32) then
-        m <- 9 // 256
+        m <- 10 // 1024
     else if(numberOfNode >= 32 && numberOfNode < 128) then
-        m <- 12 // 4096
+        m <- 12 // 2048
     else if(numberOfNode >= 128) then
         m <- 14 // 4096 * 4
+    else if(numberOfNode >= 1000) then
+        m <- 15
     m
 
 
@@ -110,7 +119,7 @@ let NodeFunction (nodeMailbox:Actor<NodeActions>) =
     let mutable selfActor = select ("") system
     let mutable chordId = -1
     let mutable serverNumber = -1
-    
+
     // chord id of next server node
     let mutable successor = -1
     let mutable predecessor = -1
@@ -141,19 +150,12 @@ let NodeFunction (nodeMailbox:Actor<NodeActions>) =
             // set the successor
             successor <- chordId
             if serverNumber = 1 then
-                let prevServerNumber = serverNumber+1
-                let prevNodeName = createServerNumberStr(prevServerNumber)
-                let prevChordId = getNodeChordId(prevNodeName)
-                successor <- prevChordId
+                successor <- secondServerChordID
             else 
-                // select any node for finding the successor
-                let prevServerNumber = serverNumber-1
-                let prevNodeName = createServerNumberStr(prevServerNumber)
-                let prevChordId = getNodeChordId(prevNodeName)
                 if serverNumber = 2 then
-                    successor <- prevChordId
+                    successor <- firstServerChordID
                 else
-                    let randomChordNode = select ("/user/" + Convert.ToString(prevChordId)) system
+                    let randomChordNode = select ("/user/" + Convert.ToString(firstServerChordID)) system
                     waitingSystemMsg <- waitingSystemMsg.Add(chordId)
                     randomChordNode <! FindSuccesor(chordId, chordId, MessageType.SYSTEM)
             
@@ -179,7 +181,6 @@ let NodeFunction (nodeMailbox:Actor<NodeActions>) =
             let task = async {
                 // if serverNumber = prinfnServerNumber then
                 //     printfn "SererNum: %d, chordId %d, successor %d, fingerTable:\n%A" serverNumber chordId successor finger
-                
                 nextFingerIdx <- (nextFingerIdx + 1) % systemParams.PowM
                 let renewKeyId = finger.[nextFingerIdx].KeyId
                 let targetSuccessor = finger.[nextFingerIdx].Succesor
@@ -230,8 +231,6 @@ let NodeFunction (nodeMailbox:Actor<NodeActions>) =
 
                 let passNode = select ("/user/" + Convert.ToString(passingChordId)) system                         
                 passNode <! FindSuccesor(keyId, requestId, messageType)
-                
-            // selfActor <! WAITING
 
         | ConfirmSUCCESSOR(keyId: int, setSuccessorId: int, messageType: MessageType) ->
             // get id's successor as chordId
@@ -252,6 +251,7 @@ let NodeFunction (nodeMailbox:Actor<NodeActions>) =
                     finger.[fingerIdx] <- newCol
                     if fingerIdx = 0 then
                         successor <- setSuccessorId
+
             elif messageType = MessageType.DATA then
                 waitingDataMsg <- waitingDataMsg.Remove(keyId)
                 recvRequest <- recvRequest + 1
@@ -262,6 +262,7 @@ let NodeFunction (nodeMailbox:Actor<NodeActions>) =
                     Async.RunSynchronously(task)
                 if recvRequest = systemParams.NumOfRequest then
                     selfActor <! STOP
+
         | Notify(targetChordId: int) ->
             if predecessor = -1 || isBetween(targetChordId, predecessor, chordId) then
                 predecessor <- targetChordId
@@ -273,7 +274,7 @@ let NodeFunction (nodeMailbox:Actor<NodeActions>) =
                 if serverNumber = prinfnServerNumber then
                     printfn "Request key %d from (ServerNum: %d, chordID %d)" randomKeyId serverNumber chordId
                 waitingDataMsg <- waitingDataMsg.Add(chordId)
-                selfActor <! FindSuccesor(randomKeyId, chordId, MessageType.DATA)
+                selfActor <! LOOKUP(randomKeyId, chordId)
                 requestCount <- requestCount + 1
             }
             Async.RunSynchronously(task)
@@ -281,6 +282,13 @@ let NodeFunction (nodeMailbox:Actor<NodeActions>) =
                 selfActor <! WAITING
             else
                 selfActor <! StartRequestTask
+        
+        | LOOKUP(keyId: int, requestID: int) ->
+            if keyId = chordId then
+                let requestActor = select ("/user/" + Convert.ToString(requestID)) system
+                requestActor <! ConfirmSUCCESSOR(keyId, successor, MessageType.DATA)
+            selfActor <! FindSuccesor(keyId, requestID, MessageType.DATA) 
+
         // | CheckPredecessor -> ()
             // let checkTask = async {
             //     // check if predecessor if failing
@@ -300,12 +308,25 @@ let createNetwork(param) =
     match box param with
     | :? SystemParams as param ->
         for i = 1 to param.NumOfNodes do
-            let inputStr = createServerNumberStr(i)
-            let chordId = getNodeChordId(inputStr)
-            let chordIdStr = Convert.ToString(chordId)
-            // set id as the 
-            let networkNode = spawn system chordIdStr NodeFunction
-            networkNode <! INIT(i)
+            let mutable validChordId = false
+            while not validChordId do
+                try
+                    let inputStr = createServerNumberStr(i)
+                    let chordId = getNodeChordId(inputStr)
+                    if i = 1 then 
+                        firstServerChordID <- chordId
+                    elif i = 2 then
+                        secondServerChordID <- chordId
+                    let chordIdStr = Convert.ToString(chordId)
+                    // set id as the 
+                    let task = async {
+                        let networkNode = spawn system chordIdStr NodeFunction
+                        networkNode <! INIT(i)
+                    }
+                    Async.RunSynchronously(task)
+                    validChordId <- true
+                with 
+                    | :? Akka.Actor.InvalidActorNameException as ex -> printfn "Same ChordID Exception! %A " (ex.Message) 
 
     | _ ->  failwith "Invalid input variables to build a network"
 

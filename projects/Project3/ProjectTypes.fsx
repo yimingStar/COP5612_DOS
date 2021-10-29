@@ -18,6 +18,7 @@ type NodeActions =
     | FindSuccesor of int*int*MessageType
     | ConfirmSUCCESSOR of int*int*MessageType
     | Notify of int
+    | LOOKUP of int*int
     // | CheckPredecessor
     | StartRequestTask
     | WAITING

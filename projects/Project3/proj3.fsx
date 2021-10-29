@@ -45,7 +45,7 @@ let config =
 let system = System.create "proj3Master" config
 let roundDuration = 150
 let requestDuration = 1000
-let prinfnServerNumber = 3
+let mutable prinfnServerNumber = -1
 
 let createServerNumberStr(serverNum: int) = 
     let numberStr = "Server-#" + Convert.ToString(serverNum)
@@ -309,6 +309,7 @@ printfn "input arguments:\n%A" (argv)
 
 systemParams <- setInputs(argv)
 printfn "system systemParams:\n%A" (systemParams)
+prinfnServerNumber <- systemParams.NumOfNodes
 createNetwork(systemParams)
 
 System.Console.ReadLine() |> ignore

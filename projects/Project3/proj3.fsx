@@ -61,7 +61,6 @@ let hashWithShaOne(originalStr: string) =
 let getNodeChordId(nodeName: string) = 
     let hashedInt = hashWithShaOne(nodeName)
     let identifier = hashedInt % systemParams.NumOfIdentifier
-    // printfn "nodeName %s, hash %d into identifier: %d " nodeName hashedInt identifier
     identifier
 
 
@@ -70,14 +69,14 @@ let setIdentifier(numberOfNode: int) =
     let mutable m = 0
     if(numberOfNode <= 4) then
         m <- 3 // 8
-    elif(numberOfNode >= 4 && numberOfNode < 9) then
-        m <- 5 // 32
-    elif(numberOfNode >= 9 && numberOfNode < 32) then
-        m <- 7 // 128
-    else if(numberOfNode >= 32 && numberOfNode < 128) then
+    elif(numberOfNode >= 4 && numberOfNode < 16) then
         m <- 8 // 256
+    elif(numberOfNode >= 16 && numberOfNode < 32) then
+        m <- 9 // 256
+    else if(numberOfNode >= 32 && numberOfNode < 128) then
+        m <- 12 // 4096
     else if(numberOfNode >= 128) then
-        m <- 10 // 1024
+        m <- 14 // 4096 * 4
     m
 
 
@@ -130,6 +129,7 @@ let NodeFunction (nodeMailbox:Actor<NodeActions>) =
     // Data key params
     let mutable waitingDataMsg = Set.empty
     let mutable requestCount = 0
+    let mutable recvRequest = 0
     
     let rec loop () = actor {
         let! (msg: NodeActions) = nodeMailbox.Receive()
@@ -138,8 +138,6 @@ let NodeFunction (nodeMailbox:Actor<NodeActions>) =
             chordId <- (nodeMailbox.Self.Path.Name |> int)
             serverNumber <- setServerNumber
             selfActor <- select ("/user/" + Convert.ToString(chordId)) system
-
-            // printfn "NodeNum: %d, chordId %d, successor %d, finger %A" serverNumber chordId successor finger
             // set the successor
             successor <- chordId
             if serverNumber = 1 then
@@ -179,8 +177,8 @@ let NodeFunction (nodeMailbox:Actor<NodeActions>) =
             // 1. Send message update FindSuccessor(finger.[nextFingerIdx].KeyId, chordId)
             // 2. Set the task to waitingList
             let task = async {
-                if serverNumber = prinfnServerNumber then
-                    printfn "SererNum: %d, chordId %d, successor %d, fingerTable:\n%A" serverNumber chordId successor finger
+                // if serverNumber = prinfnServerNumber then
+                //     printfn "SererNum: %d, chordId %d, successor %d, fingerTable:\n%A" serverNumber chordId successor finger
                 
                 nextFingerIdx <- (nextFingerIdx + 1) % systemParams.PowM
                 let renewKeyId = finger.[nextFingerIdx].KeyId
@@ -256,12 +254,13 @@ let NodeFunction (nodeMailbox:Actor<NodeActions>) =
                         successor <- setSuccessorId
             elif messageType = MessageType.DATA then
                 waitingDataMsg <- waitingDataMsg.Remove(keyId)
+                recvRequest <- recvRequest + 1
                 if serverNumber = prinfnServerNumber then
                     let task = async {
                         printfn "START from (ServerNum: %d, chordID %d), GET key %d stored on Server with chordID: %d" serverNumber chordId keyId setSuccessorId
                     }
                     Async.RunSynchronously(task)
-                if requestCount = systemParams.NumOfRequest then
+                if recvRequest = systemParams.NumOfRequest then
                     selfActor <! STOP
         | Notify(targetChordId: int) ->
             if predecessor = -1 || isBetween(targetChordId, predecessor, chordId) then
@@ -270,7 +269,9 @@ let NodeFunction (nodeMailbox:Actor<NodeActions>) =
         | StartRequestTask ->
             let task = async {
                 do! Async.Sleep requestDuration
-                let randomKeyId = Random().Next(0, systemParams.NumOfIdentifier)
+                let randomKeyId = Random().Next(0, systemParams.NumOfIdentifier-1)
+                if serverNumber = prinfnServerNumber then
+                    printfn "Request key %d from (ServerNum: %d, chordID %d)" randomKeyId serverNumber chordId
                 waitingDataMsg <- waitingDataMsg.Add(chordId)
                 selfActor <! FindSuccesor(randomKeyId, chordId, MessageType.DATA)
                 requestCount <- requestCount + 1
@@ -285,7 +286,12 @@ let NodeFunction (nodeMailbox:Actor<NodeActions>) =
             //     // check if predecessor if failing
             // }
         | WAITING -> ()
-        | STOP -> ()
+        | STOP -> 
+             if serverNumber = prinfnServerNumber then
+                let task = async {
+                    printfn "END SERVER (ServerNum: %d, chordID %d), Finger Table:\n%A" serverNumber chordId finger
+                }
+                Async.RunSynchronously(task)
         return! loop()
     }
     loop()

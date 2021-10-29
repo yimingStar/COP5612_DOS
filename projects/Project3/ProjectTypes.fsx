@@ -18,10 +18,11 @@ type NodeActions =
     | FindSuccesor of int*int*MessageType
     | ConfirmSUCCESSOR of int*int*MessageType
     | Notify of int
+    // | CheckPredecessor
     | StartRequestTask
     | WAITING
+    | STOP
     
-
 type FingerCol = {
     Idx: int
     KeyId: int // id+2^i

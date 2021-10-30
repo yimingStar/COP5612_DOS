@@ -45,6 +45,7 @@ let config =
 let system = System.create "proj3Master" config
 let roundDuration = 150
 let requestDuration = 1000
+let checkPredecessorDuration = 1000
 let mutable prinfnServerNumber = -1
 let mutable firstServerChordID = -1
 let mutable secondServerChordID = -1
@@ -289,15 +290,25 @@ let NodeFunction (nodeMailbox:Actor<NodeActions>) =
                 requestActor <! ConfirmSUCCESSOR(keyId, successor, MessageType.DATA)
             selfActor <! FindSuccesor(keyId, requestID, MessageType.DATA) 
 
-        // | CheckPredecessor -> ()
-            // let checkTask = async {
-            //     // check if predecessor if failing
-            // }
+        | CheckPredecessor ->
+            let checkTask = async {
+                // check if predecessor if failing
+                if predecessor <> -1 then
+                    try
+                        let predecessorActor = select ("/user/" + Convert.ToString(predecessor)) system
+                        predecessorActor.Ask(isAlive, TimeSpan.FromSeconds(2.0)) |> ignore
+                    with
+                        | :? Akka.Actor.AskTimeoutException
+                            -> printfn "SERVER [ServerNum: %d, chordID %d] predecessor %d is unreachable" serverNumber chordId predecessor 
+            }
+            checkTask |> Async.Start
+
         | WAITING -> ()
+        
         | STOP -> 
              if serverNumber = prinfnServerNumber then
                 let task = async {
-                    printfn "END SERVER (ServerNum: %d, chordID %d), Finger Table:\n%A" serverNumber chordId finger
+                    printfn "END SERVER [ServerNum: %d, chordID %d], Finger Table:\n%A" serverNumber chordId finger
                 }
                 Async.RunSynchronously(task)
         return! loop()

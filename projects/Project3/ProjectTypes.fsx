@@ -13,7 +13,7 @@ type NodeActions =
     | INIT of int
     | FixFinger
     | Stabilize
-    | AskPredecessor
+    | AskPredecessor of int
     | GetPredecessor of int
     | FindSuccesor of int*int*MessageType
     | ConfirmSUCCESSOR of int*int*MessageType
@@ -21,7 +21,6 @@ type NodeActions =
     | LOOKUP of int*int
     | CheckPredecessor
     | StartRequestTask
-    | isAlive
     | WAITING
     | STOP
     

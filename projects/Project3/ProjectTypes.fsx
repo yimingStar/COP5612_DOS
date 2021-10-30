@@ -11,17 +11,18 @@ type MessageType =
 
 type NodeActions = 
     | INIT of int
-    | FixFinger
-    | Stabilize
+    | FixFinger // start FixFinger timer
+    | Stabilize // start Stabilize timer
     | AskPredecessor of int
     | GetPredecessor of int
     | FindSuccesor of int*int*MessageType
     | ConfirmSUCCESSOR of int*int*MessageType
     | Notify of int
     | LOOKUP of int*int
-    | CheckPredecessor
-    | StartRequestTask
-    | WAITING
+    | CheckPredecessor // start CheckPredecessor timer
+    | StartRequestTask // start Request timer
+    | WAITING of int
+    | PING of int // ping for alive
     | STOP
     
 type FingerCol = {

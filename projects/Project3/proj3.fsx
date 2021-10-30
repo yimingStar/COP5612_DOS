@@ -42,10 +42,11 @@ let config =
 // 7. adding and failing few servers
 
 let system = System.create "proj3Master" config
-let roundDuration = 300
+let roundDuration = 3000
 let requestDuration = 1000
 let checkPredecessorDuration = 1000
 let mutable prinfnServerNumber = -1
+let mutable fakeDieServerSet = Set.empty
 let mutable firstServerChordID = -1
 let mutable secondServerChordID = -1
 
@@ -144,6 +145,7 @@ let NodeFunction (nodeMailbox:Actor<NodeActions>) =
     let stabalizeTaskCts = new System.Threading.CancellationTokenSource()
     let requestTaskCts =  new System.Threading.CancellationTokenSource()
     let fixFingerTaskCts = new System.Threading.CancellationTokenSource()
+    let checkPredTaskCts = new System.Threading.CancellationTokenSource()
 
     let rec loop () = actor {
         let! (msg: NodeActions) = nodeMailbox.Receive()
@@ -176,9 +178,11 @@ let NodeFunction (nodeMailbox:Actor<NodeActions>) =
                 finger.[idx] <- newCol
                 finderKeyIdMap <- finderKeyIdMap.Add(keyId, idx)
             
+            // start four major timer
             selfActor <! FixFinger
             selfActor <! Stabilize
             selfActor <! StartRequestTask
+            selfActor <! CheckPredecessor
 
         | FixFinger -> 
             // periodacally send msg to update the finger table
@@ -188,7 +192,7 @@ let NodeFunction (nodeMailbox:Actor<NodeActions>) =
                 let rec updateFinger () = async {
                     do! Async.Sleep roundDuration
                     if isAlive then
-                        // if serverNumber = systemParams.NumOfNodes then
+                        // if serverNumber = 2 then
                         //     printfn "SERVER [ServerNum: %d, chordID %d], Show Finger Table:\n%A" serverNumber chordId finger
                         nextFingerIdx <- (nextFingerIdx + 1) % systemParams.PowM
                         let renewKeyId = finger.[nextFingerIdx].KeyId
@@ -200,7 +204,7 @@ let NodeFunction (nodeMailbox:Actor<NodeActions>) =
                         targetActor <! FindSuccesor(renewKeyId, chordId, MessageType.SYSTEM)
                     return! updateFinger()
                 }
-                do! updateFinger () 
+                do! updateFinger() 
             }
             Async.Start(fixFingerTask, fixFingerTaskCts.Token)
         
@@ -214,7 +218,7 @@ let NodeFunction (nodeMailbox:Actor<NodeActions>) =
                             successorNode <! AskPredecessor(chordId)
                     return! updatePredecessor()
                 }
-                do! updatePredecessor () 
+                do! updatePredecessor() 
             }
             Async.Start(stabilizeTask, stabalizeTaskCts.Token)
 
@@ -230,21 +234,22 @@ let NodeFunction (nodeMailbox:Actor<NodeActions>) =
             successorNode <! Notify(chordId) 
 
         | FindSuccesor(keyId: int, requestId: int, messageType: MessageType) ->
-            // The request ancestor is requestId -> if find pass it back to requestId
-            if isBetween(keyId, chordId, successor+1) then
-                let requestActor = select ("/user/" + Convert.ToString(requestId)) system
-                requestActor <! ConfirmSUCCESSOR(keyId, successor, messageType)
-            else
-                // unfound continue pass message to find it, pass on the message through the circle   
-                let mutable passingChordId = chordId
-                let mutable inFingerTable = false
-                for i = systemParams.PowM-1 downto 0 do
-                    if isBetween(finger.[i].Succesor, chordId, keyId) && not inFingerTable then
-                        passingChordId <- finger.[i].Succesor
-                        inFingerTable <- true
+            // The request ancestor is requestId -> if find pass it back to requestId, if the node is not alive -> drop the message
+            if isAlive then 
+                if isBetween(keyId, chordId, successor+1) then
+                    let requestActor = select ("/user/" + Convert.ToString(requestId)) system
+                    requestActor <! ConfirmSUCCESSOR(keyId, successor, messageType)
+                else
+                    // unfound continue pass message to find it, pass on the message through the circle   
+                    let mutable passingChordId = chordId
+                    let mutable inFingerTable = false
+                    for i = systemParams.PowM-1 downto 0 do
+                        if isBetween(finger.[i].Succesor, chordId, keyId) && not inFingerTable then
+                            passingChordId <- finger.[i].Succesor
+                            inFingerTable <- true
 
-                let passNode = select ("/user/" + Convert.ToString(passingChordId)) system                         
-                passNode <! FindSuccesor(keyId, requestId, messageType)
+                    let passNode = select ("/user/" + Convert.ToString(passingChordId)) system                         
+                    passNode <! FindSuccesor(keyId, requestId, messageType)
 
         | ConfirmSUCCESSOR(keyId: int, setSuccessorId: int, messageType: MessageType) ->
             // get id's successor as chordId
@@ -269,11 +274,14 @@ let NodeFunction (nodeMailbox:Actor<NodeActions>) =
             elif messageType = MessageType.DATA then
                 waitingDataMsg <- waitingDataMsg.Remove(keyId)
                 recvRequest <- recvRequest + 1
-                if serverNumber = prinfnServerNumber then
+                if serverNumber = 2 then
                     let task = async {
                         printfn "START from (ServerNum: %d, chordID %d), GET key %d stored on Server with chordID: %d" serverNumber chordId keyId setSuccessorId
                     }
                     Async.RunSynchronously(task)
+                if fakeDieServerSet.Contains(chordId) && recvRequest = 5 then
+                    selfActor <! WAITING(30000)
+
                 if recvRequest = systemParams.NumOfRequest then
                     selfActor <! STOP
 
@@ -288,44 +296,66 @@ let NodeFunction (nodeMailbox:Actor<NodeActions>) =
                     do! Async.Sleep requestDuration
                     if isAlive then
                         let randomKeyId = Random().Next(0, systemParams.NumOfIdentifier-1)
-                        if serverNumber = prinfnServerNumber then
-                            printfn "Request key %d from (ServerNum: %d, chordID %d)" randomKeyId serverNumber chordId
                         waitingDataMsg <- waitingDataMsg.Add(chordId)
                         selfActor <! LOOKUP(randomKeyId, chordId)
                         requestCount <- requestCount + 1
                     return! requestLoop()
                 }
-                do! requestLoop () 
+                do! requestLoop() 
             }
             Async.Start(requestTask, requestTaskCts.Token)
         
-        | LOOKUP(keyId: int, requestID: int) ->
+        | LOOKUP(keyId: int, requestId: int) ->
             if keyId = chordId then
-                let requestActor = select ("/user/" + Convert.ToString(requestID)) system
+                let requestActor = select ("/user/" + Convert.ToString(requestId)) system
                 requestActor <! ConfirmSUCCESSOR(keyId, successor, MessageType.DATA)
-            selfActor <! FindSuccesor(keyId, requestID, MessageType.DATA) 
+            selfActor <! FindSuccesor(keyId, requestId, MessageType.DATA) 
 
-        | CheckPredecessor -> ()
-            // let checkTask = async {
-            //     // check if predecessor if failing
-            //     if predecessor <> -1 then
-            //         try
-            //             let predecessorActor = select ("/user/" + Convert.ToString(predecessor)) system
-            //             predecessorActor.Ask(isAlive, TimeSpan.FromSeconds(2.0)) |> ignore
-            //         with
-            //             | :? Akka.Actor.AskTimeoutException
-            //                 -> printfn "SERVER [ServerNum: %d, chordID %d] predecessor %d is unreachable" serverNumber chordId predecessor 
-            // }
-            // checkTask |> Async.Start
-            // selfActor <! CheckPredecessor
+        | CheckPredecessor ->
+            let checkPredTask = async {
+                // check if predecessor if failing
+                let rec checkPredLoop () = async {
+                    do! Async.Sleep 2500
+                    if isAlive then
+                        if predecessor <> -1 then
+                            try
+                                let predecessorActor = select ("/user/" + Convert.ToString(predecessor)) system
+                                let resp = predecessorActor.Ask<Boolean>(PING(chordId), TimeSpan.FromSeconds(2.0)) |> Async.RunSynchronously
+                                resp |> ignore
+                            with
+                                | :? System.AggregateException ->
+                                    // if fakeDieServerSet.Contains(predecessor) then 
+                                    //     printfn "SERVER [ServerNum: %d, chordID %d] predecessor %d is unreachable, predecessor = NULL" serverNumber chordId predecessor
+                                    predecessor <- -1
+                    return! checkPredLoop() 
+                }
+                do! checkPredLoop()
+            }
+            Async.Start(checkPredTask, checkPredTaskCts.Token)
 
-        | WAITING -> ()
-        
+        | PING(requestId: int) ->
+            // if fakeDieServerSet.Contains(chordId) then 
+                // printfn "SERVER [ServerNum: %d, chordID %d] Receive PING FROM %d, isAlive %b" serverNumber chordId requestId isAlive 
+            if isAlive then
+                let sender = nodeMailbox.Sender()
+                sender.Tell(true)
+
+        | WAITING(sleepTime: int)->
+            // pretend Dying
+            isAlive <- false
+            let waitingTask = async {
+                printfn "SERVER Dead [ServerNum: %d, chordID %d]" serverNumber chordId
+                do! Async.Sleep sleepTime
+            }
+            Async.RunSynchronously(waitingTask)
+            isAlive <- true
+
         | STOP -> 
             isAlive <- false
             stabalizeTaskCts.Cancel()
             requestTaskCts.Cancel()
             fixFingerTaskCts.Cancel()
+            checkPredTaskCts.Cancel()
             if serverNumber = prinfnServerNumber then
                 let task = async {
                     printfn "END SERVER [ServerNum: %d, chordID %d], Finger Table:\n%A" serverNumber chordId finger
@@ -357,7 +387,7 @@ let createNetwork(param) =
                     Async.RunSynchronously(task)
                     validChordId <- true
                 with 
-                    | :? Akka.Actor.InvalidActorNameException as ex -> printfn "Same ChordID Exception! %A " (ex.Message) 
+                    | :? Akka.Actor.InvalidActorNameException as ex -> printfn "ServerNum %d deployment failed, same ChordID Exception! ex: %A " i (ex.Message) 
 
     | _ ->  failwith "Invalid input variables to build a network"
 
@@ -367,7 +397,8 @@ printfn "input arguments:\n%A" (argv)
 
 systemParams <- setInputs(argv)
 printfn "system systemParams:\n%A" (systemParams)
-prinfnServerNumber <- 1
+prinfnServerNumber <- systemParams.NumOfNodes
+fakeDieServerSet <- fakeDieServerSet.Add(2)
 createNetwork(systemParams)
 
 System.Console.ReadLine() |> ignore

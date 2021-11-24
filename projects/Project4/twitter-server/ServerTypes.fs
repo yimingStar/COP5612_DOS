@@ -1,8 +1,28 @@
 module ServerTypes
 
+// Client to Server Actions
+// CONNECT
+
+// Server to Client Actions
+// REQUIRE_USERID
+
+
+// type CONNECTDATA =
+//     class
+//         inherit obj
+//         val userId: string
+//         new(userId:string) = {
+//             userId = userId
+//         }
+//     end  
+
+type CONNECTDATA = {
+    userId: string
+}
+
 type MessageType = {
     action: string
-    data: obj
+    data: string
 }
 
 type ServerActions = 

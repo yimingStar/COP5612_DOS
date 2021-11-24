@@ -6,9 +6,13 @@ type ClientActions =
     | NeedREGISTER
     | RequestREGISTER of string // enter a account 
 
+type CONNECTDATA = {
+    userId: string
+}
+
 type MessageType = {
     action: string
-    data: obj
+    data: string
 }
 
 // using object to simulate getting data from database

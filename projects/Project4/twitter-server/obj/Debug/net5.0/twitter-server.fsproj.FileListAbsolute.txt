@@ -52,3 +52,4 @@ C:\COP5612_DOS\projects\Project4\twitter-server\obj\Debug\net5.0\twitter-server.
 C:\COP5612_DOS\projects\Project4\twitter-server\obj\Debug\net5.0\twitter-server.pdb
 C:\COP5612_DOS\projects\Project4\twitter-server\obj\Debug\net5.0\twitter-server.genruntimeconfig.cache
 C:\COP5612_DOS\projects\Project4\twitter-server\bin\Debug\net5.0\FSharp.Data.dll
+C:\COP5612_DOS\projects\Project4\twitter-server\bin\Debug\net5.0\FSharp.Json.dll

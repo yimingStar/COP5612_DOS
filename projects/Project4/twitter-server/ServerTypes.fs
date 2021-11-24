@@ -1,8 +1,9 @@
 module ServerTypes
 
-type MessageType = 
-    | SYSTEM
-    | DATA
+type MessageType = {
+    action: string
+    data: obj
+}
 
 type ServerActions = 
     | START

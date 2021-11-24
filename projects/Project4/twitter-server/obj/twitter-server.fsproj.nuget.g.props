@@ -17,6 +17,7 @@
   </PropertyGroup>
   <PropertyGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
     <PkgFSharp_Core Condition=" '$(PkgFSharp_Core)' == '' ">C:\Users\ericd\.nuget\packages\fsharp.core\5.0.0</PkgFSharp_Core>
+    <PkgFSharp_Json Condition=" '$(PkgFSharp_Json)' == '' ">C:\Users\ericd\.nuget\packages\fsharp.json\0.4.0</PkgFSharp_Json>
     <PkgFSharp_Data Condition=" '$(PkgFSharp_Data)' == '' ">C:\Users\ericd\.nuget\packages\fsharp.data\4.2.4</PkgFSharp_Data>
     <PkgAkka Condition=" '$(PkgAkka)' == '' ">C:\Users\ericd\.nuget\packages\akka\1.4.28</PkgAkka>
     <PkgAkka_Remote Condition=" '$(PkgAkka_Remote)' == '' ">C:\Users\ericd\.nuget\packages\akka.remote\1.4.27</PkgAkka_Remote>

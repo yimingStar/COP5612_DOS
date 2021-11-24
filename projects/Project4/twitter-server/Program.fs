@@ -1,13 +1,13 @@
 open System
-open System.Security.Cryptography
 open Akka.Actor
 open Akka.Configuration
 open Akka.FSharp
 open FSharp.Data
+open FSharp.Json
 open ServerTypes
 
 let hostIP = "localhost"
-let port = "9988" 
+let port = "5566" 
 let config =
     ConfigurationFactory.ParseString(
             @"akka {
@@ -19,31 +19,20 @@ let config =
             }"
         )
 
-let serverSystem = System.create "twitter-server" (config)
+let serverSystem = System.create "twitterServer" (config)
 let userDataPath = __SOURCE_DIRECTORY__ + "./data/users.json"
+let JsonConfig = JsonConfig.create(allowUntyped = true)
 let userData = JsonValue.Load(userDataPath)
 
-let serverEngine (serverMailbox:Actor<ServerActions>) =
+let serverEngine (serverMailbox:Actor<String>) =
     let mutable selfActor = select ("") serverSystem
     let rec loop () = actor {
-        let! (msg: ServerActions) = serverMailbox.Receive()
-        match msg with
-        | START -> 
-            printfn "Sever Engine Start"
-            printfn "user data %A" userData
-            ()
-        | SIGNIN(userID: string) ->
-            printfn "UserID: %s has signed in" userID 
+        let! (msg: String) = serverMailbox.Receive()
+        let actionObj = Json.deserializeEx<MessageType> JsonConfig msg
+        printfn "receive obj: %A" actionObj
+        // match msg with
 
-        | REGISTER(account: string) ->
-            printfn "User with account: %s has register for new accoun" account 
-            
-        // | SUBSCRIBE of int // client subscribe to userID
-        // | StopSUBSCRIBE of int
-        // | PostTWEET of int*string*System.Array*System.Array // userID, tweet content, hashtags<string>, metioned<userID>
-        | CONNECTED(userID: string) ->
-            printfn "UserID: %s has connected" userID
-
+        // | _ -> printfn "[Invalid Action] server no action match %s" msg
         return! loop()
     }
     loop()
@@ -51,7 +40,7 @@ let serverEngine (serverMailbox:Actor<ServerActions>) =
 [<EntryPoint>]
 let main argv =
     // create server main actor
-    let serverMainActor = spawn serverSystem "server-engine" serverEngine
+    let serverMainActor = spawn serverSystem "serverEngine" serverEngine
     serverMainActor <! START
     System.Console.ReadLine() |> ignore
     0 // return an integer exit code

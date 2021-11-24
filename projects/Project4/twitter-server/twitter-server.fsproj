@@ -17,6 +17,7 @@
     <PackageReference Include="Akka.FSharp" Version="1.4.27" />
     <PackageReference Include="Akka.Remote" Version="1.4.27" />
     <PackageReference Include="FSharp.Data" Version="4.2.4" />
+    <PackageReference Include="FSharp.Json" Version="0.4.0" />
   </ItemGroup>
 
 </Project>

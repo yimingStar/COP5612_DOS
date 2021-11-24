@@ -12,7 +12,8 @@
           "Akka.FSharp": "1.4.27",
           "Akka.Remote": "1.4.27",
           "FSharp.Core": "5.0.0",
-          "FSharp.Data": "4.2.4"
+          "FSharp.Data": "4.2.4",
+          "FSharp.Json": "0.4.0"
         },
         "runtime": {
           "twitter-server.dll": {}
@@ -199,6 +200,17 @@
           "lib/netstandard2.0/FSharp.Data.dll": {
             "assemblyVersion": "4.2.4.0",
             "fileVersion": "4.2.4.0"
+          }
+        }
+      },
+      "FSharp.Json/0.4.0": {
+        "dependencies": {
+          "FSharp.Core": "5.0.0"
+        },
+        "runtime": {
+          "lib/netstandard2.0/FSharp.Json.dll": {
+            "assemblyVersion": "0.4.0.0",
+            "fileVersion": "0.0.0.0"
           }
         }
       },
@@ -1275,6 +1287,13 @@
       "sha512": "sha512-PiCTnSylPIbFDGWQ9T+KTXxm1iV2oQKh52zMRxal8HGZdsesM/fATNSGIDlgTFslo/6rsX5tB6uCXOGj3YwaAg==",
       "path": "fsharp.data/4.2.4",
       "hashPath": "fsharp.data.4.2.4.nupkg.sha512"
+    },
+    "FSharp.Json/0.4.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-3QchEhViQdnvJQzVG7M/CIgdCZhDJw4ZzFKMfLqb/j1cucxcUcXvIMxf6rV0ktFn9mmkmw9WOOuIsrG012vkUg==",
+      "path": "fsharp.json/0.4.0",
+      "hashPath": "fsharp.json.0.4.0.nupkg.sha512"
     },
     "FSharp.Quotations.Evaluator/2.1.0": {
       "type": "package",

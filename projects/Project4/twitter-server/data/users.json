@@ -1,0 +1,8 @@
+{
+    "tweetUser_1": {
+        "account": "testdeveloper",
+        "suscribedList": [],
+        "suscribers": [],
+        "tweets": ["tweetpost_1"]
+    }
+}

@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "1ecoReSPOLyaDaOdIjqpsOezboksQz7SvKF8GWMiXy9uW4M/ip4iAnhnAFt9l7JQtDHY0dZX11qmc5hTMfesTg==",
+  "dgSpecHash": "2on29Orh0YhNyMAcLQnKtWXfTG5vqNGn6Fy6/AY2xvrVjbMlCWXOYsS51yT8MmI6ZOir0Z1ip7UDJSdK5hpJxQ==",
   "success": true,
   "projectFilePath": "C:\\COP5612_DOS\\projects\\Project4\\twitter-server\\twitter-server.fsproj",
   "expectedPackageFiles": [
@@ -13,6 +13,7 @@
     "C:\\Users\\ericd\\.nuget\\packages\\dotnetty.handlers\\0.6.0\\dotnetty.handlers.0.6.0.nupkg.sha512",
     "C:\\Users\\ericd\\.nuget\\packages\\dotnetty.transport\\0.6.0\\dotnetty.transport.0.6.0.nupkg.sha512",
     "C:\\Users\\ericd\\.nuget\\packages\\fsharp.core\\5.0.0\\fsharp.core.5.0.0.nupkg.sha512",
+    "C:\\Users\\ericd\\.nuget\\packages\\fsharp.data\\4.2.4\\fsharp.data.4.2.4.nupkg.sha512",
     "C:\\Users\\ericd\\.nuget\\packages\\fsharp.quotations.evaluator\\2.1.0\\fsharp.quotations.evaluator.2.1.0.nupkg.sha512",
     "C:\\Users\\ericd\\.nuget\\packages\\fspickler\\5.3.2\\fspickler.5.3.2.nupkg.sha512",
     "C:\\Users\\ericd\\.nuget\\packages\\google.protobuf\\3.17.3\\google.protobuf.3.17.3.nupkg.sha512",

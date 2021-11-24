@@ -184,6 +184,18 @@
           }
         }
       },
+      "FSharp.Data/4.2.4": {
+        "type": "package",
+        "dependencies": {
+          "FSharp.Core": "4.7.2"
+        },
+        "compile": {
+          "lib/netstandard2.0/FSharp.Data.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard2.0/FSharp.Data.dll": {}
+        }
+      },
       "FSharp.Quotations.Evaluator/2.1.0": {
         "type": "package",
         "dependencies": {
@@ -2021,6 +2033,22 @@
         "lib/netstandard2.0/tr/FSharp.Core.resources.dll",
         "lib/netstandard2.0/zh-Hans/FSharp.Core.resources.dll",
         "lib/netstandard2.0/zh-Hant/FSharp.Core.resources.dll"
+      ]
+    },
+    "FSharp.Data/4.2.4": {
+      "sha512": "PiCTnSylPIbFDGWQ9T+KTXxm1iV2oQKh52zMRxal8HGZdsesM/fATNSGIDlgTFslo/6rsX5tB6uCXOGj3YwaAg==",
+      "type": "package",
+      "path": "fsharp.data/4.2.4",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "fsharp.data.4.2.4.nupkg.sha512",
+        "fsharp.data.nuspec",
+        "lib/netstandard2.0/FSharp.Data.dll",
+        "lib/netstandard2.0/FSharp.Data.xml",
+        "logo.png",
+        "typeproviders/fsharp41/netstandard2.0/FSharp.Data.DesignTime.deps.json",
+        "typeproviders/fsharp41/netstandard2.0/FSharp.Data.DesignTime.dll"
       ]
     },
     "FSharp.Quotations.Evaluator/2.1.0": {
@@ -6347,7 +6375,8 @@
       "Akka >= 1.4.28",
       "Akka.FSharp >= 1.4.27",
       "Akka.Remote >= 1.4.27",
-      "FSharp.Core >= 5.0.0"
+      "FSharp.Core >= 5.0.0",
+      "FSharp.Data >= 4.2.4"
     ]
   },
   "packageFolders": {
@@ -6401,6 +6430,11 @@
             "include": "Runtime, Compile, Build, Native, Analyzers, BuildTransitive",
             "target": "Package",
             "version": "[5.0.0, )",
+            "generatePathProperty": true
+          },
+          "FSharp.Data": {
+            "target": "Package",
+            "version": "[4.2.4, )",
             "generatePathProperty": true
           }
         },

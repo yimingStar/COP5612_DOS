@@ -1,0 +1,8 @@
+{
+    "tweetpost_1": {
+        "userId": "tweedUser_1",
+        "content": "I am testing this system",
+        "hashTag": ["#testingBoy", "#Just Do IT"],
+        "mention": []
+    }
+}

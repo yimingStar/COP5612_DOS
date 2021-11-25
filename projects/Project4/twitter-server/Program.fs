@@ -5,6 +5,7 @@ open Akka.FSharp
 open FSharp.Data
 open FSharp.Json
 open ServerTypes
+open System.Collections.Generic
 
 let hostIP = "localhost"
 let port = "5566" 
@@ -22,7 +23,15 @@ let config =
 let serverSystem = System.create "twitterServer" (config)
 let userDataPath = __SOURCE_DIRECTORY__ + "./data/users.json"
 let JsonConfig = JsonConfig.create(allowUntyped = true)
-let userData = JsonValue.Load(userDataPath)
+let mutable userDataMap = Map.empty
+let loadedUserData = JsonValue.Load(userDataPath).Properties()
+printfn "loadedUserData: %A" loadedUserData 
+
+let deserializeUserData() =
+    for user in loadedUserData do
+        printfn "add User: %A" user
+        let key, value = user
+        userDataMap <- userDataMap.Add(key, value)
 
 let serverEngine (serverMailbox:Actor<String>) =
     let mutable selfActor = select ("") serverSystem
@@ -42,7 +51,24 @@ let serverEngine (serverMailbox:Actor<String>) =
                 }
                 sender <! Json.serializeEx JsonConfig resp
             else
-                printfn "Receive CONNECT request from userId, return user object and main posts" 
+                let mutable resp: MessageType = {
+                    action = "REQUIRE_USERID"
+                    data = ""
+                }
+                printfn "Receive CONNECT request from userId %s, return user object and main posts" data.userId
+                try
+                    deserializeUserData()
+                    printfn "userDataMap: %A" userDataMap
+                    let usersData = userDataMap |> Map.find data.userId 
+                    let newResp: MessageType = {
+                        action = "RESULT_DATA"
+                        data = usersData.ToString()
+                    }
+                    resp <- newResp
+                with :? KeyNotFoundException as ex -> printfn "Exception! %A " (ex.Message) 
+
+                printfn "resp %A" resp
+                sender <! Json.serializeEx JsonConfig resp
 
         | _ -> printfn "[Invalid Action] server no action match %s" msg
         return! loop()

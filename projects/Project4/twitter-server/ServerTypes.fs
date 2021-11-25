@@ -5,6 +5,7 @@ module ServerTypes
 
 // Server to Client Actions
 // REQUIRE_USERID
+// DATA
 
 
 // type CONNECTDATA =

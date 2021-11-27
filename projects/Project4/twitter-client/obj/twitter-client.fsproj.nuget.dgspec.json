@@ -1,20 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "C:\\COP5612_DOS\\projects\\Project4\\twitter-client\\twitter-client.fsproj": {}
+    "/Users/ericchang/Documents/UFL/2021_Fall/COP5615-DistOperSysPrinc/COP5612_DOS/projects/Project4/twitter-client/twitter-client.fsproj": {}
   },
   "projects": {
-    "C:\\COP5612_DOS\\projects\\Project4\\twitter-client\\twitter-client.fsproj": {
+    "/Users/ericchang/Documents/UFL/2021_Fall/COP5615-DistOperSysPrinc/COP5612_DOS/projects/Project4/twitter-client/twitter-client.fsproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\COP5612_DOS\\projects\\Project4\\twitter-client\\twitter-client.fsproj",
+        "projectUniqueName": "/Users/ericchang/Documents/UFL/2021_Fall/COP5615-DistOperSysPrinc/COP5612_DOS/projects/Project4/twitter-client/twitter-client.fsproj",
         "projectName": "twitter-client",
-        "projectPath": "C:\\COP5612_DOS\\projects\\Project4\\twitter-client\\twitter-client.fsproj",
-        "packagesPath": "C:\\Users\\ericd\\.nuget\\packages\\",
-        "outputPath": "C:\\COP5612_DOS\\projects\\Project4\\twitter-client\\obj\\",
+        "projectPath": "/Users/ericchang/Documents/UFL/2021_Fall/COP5615-DistOperSysPrinc/COP5612_DOS/projects/Project4/twitter-client/twitter-client.fsproj",
+        "packagesPath": "/Users/ericchang/.nuget/packages/",
+        "outputPath": "/Users/ericchang/Documents/UFL/2021_Fall/COP5615-DistOperSysPrinc/COP5612_DOS/projects/Project4/twitter-client/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "C:\\Users\\ericd\\AppData\\Roaming\\NuGet\\NuGet.Config"
+          "/Users/ericchang/.nuget/NuGet/NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net5.0"
@@ -75,7 +75,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\5.0.401\\RuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/5.0.403/RuntimeIdentifierGraph.json"
         }
       }
     }

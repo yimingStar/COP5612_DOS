@@ -21,7 +21,7 @@ let config =
         )
 
 let serverSystem = System.create "twitterServer" (config)
-let userDataPath = __SOURCE_DIRECTORY__ + "./data/users.json"
+let userDataPath = __SOURCE_DIRECTORY__ + "/data/users.json"
 let JsonConfig = JsonConfig.create(allowUntyped = true)
 let mutable userDataMap = Map.empty
 let loadedUserData = JsonValue.Load(userDataPath).Properties()
@@ -69,6 +69,35 @@ let serverEngine (serverMailbox:Actor<String>) =
 
                 printfn "resp %A" resp
                 sender <! Json.serializeEx JsonConfig resp
+        | "REGISTER" -> 
+            let data = Json.deserializeEx<REGISTERDATA> JsonConfig actionObj.data
+            if data.account = "" then
+                printfn "Receive REGISTER request without account, request to resend"
+                let resp: MessageType = {
+                    action = "REQUIRE_ACCOUNT"
+                    data = ""
+                }
+                sender <! Json.serializeEx JsonConfig resp
+            else
+                printfn "Receive REGISTER request with account %s, create user object and return" data.account
+                
+                // Create UseId
+                let numUser = userDataMap |> Map.find "numUser" |> string |> int
+                let newUserId = userIdPrefix + ((numUser+1) |> string)
+
+                printfn "check new userId: %s" newUserId
+                // Create User Object and Store
+                let newUserObj: UserObject = {
+                    account = data.account
+                    subscribedList = []
+                    subscribers = []
+                    tweets = []
+                }
+                printfn "check new newUserObj: %A" newUserObj
+
+                
+
+
 
         | _ -> printfn "[Invalid Action] server no action match %s" msg
         return! loop()

@@ -39,6 +39,9 @@ let clientFunction (clientMailbox:Actor<String>) =
             server <! actionStr
         | "REQUIRE_USERID" ->
             printfn "[Receive from Server] Required REGISTER or SIGNIN"
+        | "REGISTER" -> 
+            printfn "[Send request] Send REGISTER to server"
+            server <! actionStr
         | _ -> printfn "[Invalid Action] client no action match %s" actionObj.action
         return! loop()
     }
@@ -64,6 +67,21 @@ let rec readLinesFromConsole() =
 
                     let sendRequest: MessageType = {
                         action = "CONNECT"
+                        data = Json.serializeEx JsonConfig inputData
+                    }
+
+                    clientActor <! Json.serializeEx JsonConfig sendRequest
+
+                | "REGISTER" ->
+                    let userAccount = if inputStrings.Length > 1 then inputStrings.[1] else ""
+                    printfn "[Recieve Action String] send REGISTER to client actor with account: %s" userAccount
+                    
+                    let inputData: REGISTERDATA = {
+                        account = userAccount
+                    }
+
+                    let sendRequest: MessageType = {
+                        action = "REGISTER"
                         data = Json.serializeEx JsonConfig inputData
                     }
 

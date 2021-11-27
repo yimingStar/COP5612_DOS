@@ -6,17 +6,17 @@ module ServerTypes
 // Server to Client Actions
 // REQUIRE_USERID
 // DATA
+type REGISTERDATA = {
+    account: string
+}
 
-
-// type CONNECTDATA =
-//     class
-//         inherit obj
-//         val userId: string
-//         new(userId:string) = {
-//             userId = userId
-//         }
-//     end  
-
+// using object to simulate getting data from database
+type UserObject = {
+    account: string
+    subscribedList: string list // Array of userID user subscribed
+    subscribers: string list
+    tweets: string list // Array of userID who subscibed user
+}   
 type CONNECTDATA = {
     userId: string
 }
@@ -35,11 +35,4 @@ type ServerActions =
     | PostTWEET of string*string*System.Array*System.Array // userID, tweet content, hashtags<string>, metioned<userID>
     | CONNECTED of string // connect by userId 
 
-
-// using object to simulate getting data from database
-type UserObject = {
-    acount: string
-    userID: int
-    subscribedList: System.Array // Array of userID user subscribed
-    subsribers: System.Array // Array of userID who subscibed user
-}      
+let userIdPrefix = "tweetUser_"

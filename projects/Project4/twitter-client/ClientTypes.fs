@@ -10,6 +10,11 @@ type CONNECTDATA = {
     userId: string
 }
 
+
+type REGISTERDATA = {
+    account: string
+}
+
 type MessageType = {
     action: string
     data: string
@@ -22,4 +27,3 @@ type UserObject = {
     subscribedList: System.Array // Array of userID user subscribed
     subsribers: System.Array // Array of userID who subscibed user
 }      
-

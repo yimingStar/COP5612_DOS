@@ -9,7 +9,7 @@ open FSharp.Data.JsonExtensions
 open ClientTypes
 
 let mutable myUserObj: UserObject = {
-    account = data.account
+    account = ""
     subscribedList = []
     subscribers = []
     tweets = []
@@ -51,12 +51,14 @@ let clientFunction (clientMailbox:Actor<String>) =
         | "SUBSCRIBE" ->
             printfn "[Send request] Send SUBSCRIBE to server"
             server <! actionStr
-        | "TWEET" -> ()
+        | "TWEET" ->
             printfn "[Send request] Send TWEET to server"
             server <! actionStr
         | "USER_DATA" ->
-            printfn "[Recv response] Get USER_DATA %a" actionObj
-            actionObj?data
+            printfn "[Recv response] Get USER_DATA %s" actionObj.data
+            myUserObj <- Json.deserializeEx<UserObject> JsonConfig actionObj.data
+            printfn "update myUserObj %A" myUserObj
+
         | "TWEET_DATA" -> ()
         | "REQUIRE_USERID" ->
             printfn "[Receive from Server] Required REGISTER or SIGNIN"

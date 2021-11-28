@@ -156,6 +156,7 @@ let serverEngine (serverMailbox:Actor<String>) =
                         action = "USER_DATA"
                         data = usersDataStr
                     }
+                    resp <- newResp
                 with :? KeyNotFoundException as ex -> printfn "Exception! %A " (ex.Message) 
 
                 printfn "resp %A" resp

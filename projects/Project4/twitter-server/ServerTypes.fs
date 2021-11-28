@@ -1,18 +1,13 @@
 module ServerTypes
-
-// Client to Server Actions
-// CONNECT
-// REGISTER
-// SUBSCRIBE
-
-// Server to Client Actions
-// REQUIRE_USERID
-// DATA
-
 // SERVER RECEIVE
 // CONNECT
 // REGISTER
 // SUBSCRIBE
+// TWEET
+
+// Server to Client Actions
+// REQUIRE_USERID
+// DATA
 
 
 type REGISTERDATA = {

@@ -5,7 +5,15 @@ open Akka.Configuration
 open Akka.FSharp
 open FSharp.Data
 open FSharp.Json
+open FSharp.Data.JsonExtensions
 open ClientTypes
+
+let mutable myUserObj: UserObject = {
+    account = data.account
+    subscribedList = []
+    subscribers = []
+    tweets = []
+}
 
 let config = 
     Configuration.parse
@@ -37,12 +45,24 @@ let clientFunction (clientMailbox:Actor<String>) =
         | "CONNECT" ->
             printfn "[Send request] Send CONNECT to server"
             server <! actionStr
-        | "REQUIRE_USERID" ->
-            printfn "[Receive from Server] Required REGISTER or SIGNIN"
         | "REGISTER" -> 
             printfn "[Send request] Send REGISTER to server"
             server <! actionStr
+        | "SUBSCRIBE" ->
+            printfn "[Send request] Send SUBSCRIBE to server"
+            server <! actionStr
+        | "TWEET" -> ()
+            printfn "[Send request] Send TWEET to server"
+            server <! actionStr
+        | "USER_DATA" ->
+            printfn "[Recv response] Get USER_DATA %a" actionObj
+            actionObj?data
+        | "TWEET_DATA" -> ()
+        | "REQUIRE_USERID" ->
+            printfn "[Receive from Server] Required REGISTER or SIGNIN"
+        | "REQUIRE_ACCOUNT" -> ()
         | _ -> printfn "[Invalid Action] client no action match %s" actionObj.action
+        
         return! loop()
     }
     loop()
@@ -86,6 +106,23 @@ let rec readLinesFromConsole() =
                     }
 
                     clientActor <! Json.serializeEx JsonConfig sendRequest
+
+                | "SUBSCRIBE" ->
+                    let userId = if inputStrings.Length > 1 then inputStrings.[1] else ""
+                    printfn "[Recieve Action String] send SUBSCRIBE to client actor with userID: %s" userId
+                    
+                    let inputData: SUBSCRIBEDATA = {
+                        targeUserId = userId
+                        userId = userId
+                    }
+
+                    let sendRequest: MessageType = {
+                        action = "SUBSCRIBE"
+                        data = Json.serializeEx JsonConfig inputData
+                    }
+
+                    clientActor <! Json.serializeEx JsonConfig sendRequest
+
                 | _ -> printfn "[Invalid Action] no action match: %s" setActionStr
         else 
             printfn "%s" line

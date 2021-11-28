@@ -1,8 +1,13 @@
 module ClientTypes
 
 // Client RECEIVE
+// invalid msg
 // REQUIRE_USERID
-// DATA
+// REQUIRE_ACCOUNT
+// ---
+// return data
+// USER_DATA
+// TWEET_DATA
 
 // Client to Server Actions
 // CONNECT
@@ -21,9 +26,13 @@ type CONNECTDATA = {
     userId: string
 }
 
-
 type REGISTERDATA = {
     account: string
+}
+
+type SUBSCRIBEDATA = {
+    targeUserId: string
+    userId: string
 }
 
 type MessageType = {
@@ -33,8 +42,8 @@ type MessageType = {
 
 // using object to simulate getting data from database
 type UserObject = {
-    acount: string
-    userID: int
-    subscribedList: System.Array // Array of userID user subscribed
-    subsribers: System.Array // Array of userID who subscibed user
-}      
+    account: string
+    subscribedList: string list // Array of userID user subscribed
+    subscribers: string list
+    tweets: string list // Array of userID who subscibed user
+}

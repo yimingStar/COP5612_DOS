@@ -1,9 +1,15 @@
 {
-    "numUser": 11001,
-    "tweetUser_11001": {
+    "numUser": 2,
+    "tweetUser_1": {
         "account": "testdeveloper",
         "subscribedList": [],
         "subscribers": [],
-        "tweets": ["tweetpost_1"]
+        "tweets": ["tweetpost_1", "tweetpost_3"]
+    },
+    "tweetUser_2": {
+        "account": "testdeveloper2",
+        "subscribedList": [],
+        "subscribers": [],
+        "tweets": ["tweetpost_2"]
     }
 }

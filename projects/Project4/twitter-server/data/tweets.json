@@ -1,7 +1,19 @@
 {
     "tweetpost_1": {
-        "userId": "tweedUser_1",
+        "userId": "tweetUser_1",
         "content": "I am testing this system",
+        "hashTag": ["#testingBoy", "#Just Do IT"],
+        "mention": []
+    },
+    "tweetpost_2": {
+        "userId": "tweetUser_2",
+        "content": "I am testing this system",
+        "hashTag": ["#testingBoy"],
+        "mention": []
+    },
+    "tweetpost_3": {
+        "userId": "tweetUser_1",
+        "content": "Go Vamost",
         "hashTag": ["#testingBoy", "#Just Do IT"],
         "mention": []
     }

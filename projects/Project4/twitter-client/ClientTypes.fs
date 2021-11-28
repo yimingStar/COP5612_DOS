@@ -1,5 +1,16 @@
 module ClientTypes
 
+// Client RECEIVE
+// REQUIRE_USERID
+// DATA
+
+// Client to Server Actions
+// CONNECT
+// REGISTER
+// SUBSCRIBE
+// TWEET
+
+
 
 type ClientActions = 
     | RequestCONNECTED of string // connect to server

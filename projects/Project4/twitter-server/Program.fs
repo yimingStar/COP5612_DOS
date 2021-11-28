@@ -4,6 +4,7 @@ open Akka.Configuration
 open Akka.FSharp
 open FSharp.Data
 open FSharp.Json
+open FSharp.Data.JsonExtensions
 open ServerTypes
 open System.Collections.Generic
 
@@ -22,14 +23,33 @@ let config =
 
 let serverSystem = System.create "twitterServer" (config)
 let userDataPath = __SOURCE_DIRECTORY__ + "/data/users.json"
+let tweetDataPath = __SOURCE_DIRECTORY__ + "/data/tweets.json"
+
 let JsonConfig = JsonConfig.create(allowUntyped = true)
 let mutable userDataMap = Map.empty
-let loadedUserData = JsonValue.Load(userDataPath).Properties()
+let mutable tweetDataMap = Map.empty
+let loadedUserData = JsonValue.Load(userDataPath).Properties
+let loadedTweets = JsonValue.Load(tweetDataPath).Properties
+
 
 let deserializeUserData() =
     for user in loadedUserData do
         let key, value = user
         userDataMap <- userDataMap.Add(key, value |> string)
+
+
+let deserializeTweetData() =
+    for tweet in loadedTweets do
+        let key, value = tweet
+        tweetDataMap <- tweetDataMap.Add(key, value |> string)
+
+let getUserTweets(getUserJson) =
+    printfn "getUserTweets %A" getUserJson?tweets 
+    let mutable tweetData = []
+    for tweedId in getUserJson?tweets do
+        printfn "check tweetId %A" tweedId
+        tweetData <- tweetData @ [tweetDataMap |> Map.find (tweedId.AsString())] 
+    tweetData
 
 let serverEngine (serverMailbox:Actor<String>) =
     let mutable selfActor = select ("") serverSystem
@@ -54,19 +74,27 @@ let serverEngine (serverMailbox:Actor<String>) =
                     data = ""
                 }
                 printfn "Receive CONNECT request from userId %s, return user object and main posts" data.userId
+                let mutable usersDataStr = ""
                 try
-                    deserializeUserData()
-                    printfn "userDataMap: %A" userDataMap
-                    let usersData = userDataMap |> Map.find data.userId 
+                    usersDataStr <- userDataMap |> Map.find data.userId 
                     let newResp: MessageType = {
-                        action = "RESULT_DATA"
-                        data = usersData
+                        action = "USER_DATA"
+                        data = usersDataStr
                     }
                     resp <- newResp
                 with :? KeyNotFoundException as ex -> printfn "Exception! %A " (ex.Message) 
 
                 printfn "resp %A" resp
                 sender <! Json.serializeEx JsonConfig resp
+
+                let getUserJson = JsonValue.Parse(usersDataStr)
+                
+                let respTweet: MessageType = {
+                    action = "TWEET_DATA"
+                    data = getUserTweets(getUserJson).ToString()
+                }
+                sender <! Json.serializeEx JsonConfig respTweet
+
         | "REGISTER" -> 
             let data = Json.deserializeEx<REGISTERDATA> JsonConfig actionObj.data
             if data.account = "" then
@@ -93,17 +121,20 @@ let serverEngine (serverMailbox:Actor<String>) =
                     tweets = []
                 }
 
-                let usersData = newUserObj |> string
-                printfn "check new newUserObj: %A" newUserObj
-                userDataMap <- userDataMap.Add(newUserId, usersData)
+                let usersDataStr = newUserObj |> string
+                // printfn "check new newUserObj: %A" newUserObj
+                userDataMap <- userDataMap.Add(newUserId, usersDataStr)
                 userDataMap <- userDataMap.Add("numUser", newNumUser |> string)
 
-                printfn "check new userDataMap: %A" userDataMap
+                // printfn "check new userDataMap: %A" userDataMap
                 let newResp: MessageType = {
-                    action = "RESULT_DATA"
-                    data = usersData
+                    action = "USER_DATA"
+                    data = usersDataStr
                 }
                 sender <! Json.serializeEx JsonConfig newResp
+                
+        | "SUBSCRIBE" -> ()
+        | "TWEET" -> ()
 
         | _ -> printfn "[Invalid Action] server no action match %s" msg
         return! loop()
@@ -114,6 +145,7 @@ let serverEngine (serverMailbox:Actor<String>) =
 let main argv =
     // create server main actor
     deserializeUserData()
+    deserializeTweetData()
     let serverMainActor = spawn serverSystem "serverEngine" serverEngine
     System.Console.ReadLine() |> ignore
     0 // return an integer exit code

@@ -25,13 +25,11 @@ let userDataPath = __SOURCE_DIRECTORY__ + "/data/users.json"
 let JsonConfig = JsonConfig.create(allowUntyped = true)
 let mutable userDataMap = Map.empty
 let loadedUserData = JsonValue.Load(userDataPath).Properties()
-printfn "loadedUserData: %A" loadedUserData 
 
 let deserializeUserData() =
     for user in loadedUserData do
-        printfn "add User: %A" user
         let key, value = user
-        userDataMap <- userDataMap.Add(key, value)
+        userDataMap <- userDataMap.Add(key, value |> string)
 
 let serverEngine (serverMailbox:Actor<String>) =
     let mutable selfActor = select ("") serverSystem
@@ -62,7 +60,7 @@ let serverEngine (serverMailbox:Actor<String>) =
                     let usersData = userDataMap |> Map.find data.userId 
                     let newResp: MessageType = {
                         action = "RESULT_DATA"
-                        data = usersData.ToString()
+                        data = usersData
                     }
                     resp <- newResp
                 with :? KeyNotFoundException as ex -> printfn "Exception! %A " (ex.Message) 
@@ -83,7 +81,8 @@ let serverEngine (serverMailbox:Actor<String>) =
                 
                 // Create UseId
                 let numUser = userDataMap |> Map.find "numUser" |> string |> int
-                let newUserId = userIdPrefix + ((numUser+1) |> string)
+                let newNumUser = numUser + 1
+                let newUserId = sprintf "%s%d" userIdPrefix newNumUser
 
                 printfn "check new userId: %s" newUserId
                 // Create User Object and Store
@@ -93,11 +92,18 @@ let serverEngine (serverMailbox:Actor<String>) =
                     subscribers = []
                     tweets = []
                 }
+
+                let usersData = newUserObj |> string
                 printfn "check new newUserObj: %A" newUserObj
+                userDataMap <- userDataMap.Add(newUserId, usersData)
+                userDataMap <- userDataMap.Add("numUser", newNumUser |> string)
 
-                
-
-
+                printfn "check new userDataMap: %A" userDataMap
+                let newResp: MessageType = {
+                    action = "RESULT_DATA"
+                    data = usersData
+                }
+                sender <! Json.serializeEx JsonConfig newResp
 
         | _ -> printfn "[Invalid Action] server no action match %s" msg
         return! loop()
@@ -107,6 +113,7 @@ let serverEngine (serverMailbox:Actor<String>) =
 [<EntryPoint>]
 let main argv =
     // create server main actor
+    deserializeUserData()
     let serverMainActor = spawn serverSystem "serverEngine" serverEngine
     System.Console.ReadLine() |> ignore
     0 // return an integer exit code

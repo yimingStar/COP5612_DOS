@@ -9,7 +9,6 @@ module ServerTypes
 // REQUIRE_USERID
 // DATA
 
-
 type REGISTERDATA = {
     account: string
 }
@@ -29,14 +28,5 @@ type MessageType = {
     action: string
     data: string
 }
-
-type ServerActions = 
-    | START
-    | SIGNIN of string
-    | REGISTER of string // client create -> account -> return userID
-    | SUBSCRIBE of int // client subscribe to userID
-    | StopSUBSCRIBE of int
-    | PostTWEET of string*string*System.Array*System.Array // userID, tweet content, hashtags<string>, metioned<userID>
-    | CONNECTED of string // connect by userId 
 
 let userIdPrefix = "tweetUser_"

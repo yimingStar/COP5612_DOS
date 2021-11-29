@@ -15,6 +15,9 @@ let mutable myUserObj: UserObject = {
     tweets = []
 }
 
+let mutable browsingTweetList: TweetObject list = []
+let mutable ownTweetList: TweetObject list = []
+
 let config = 
     Configuration.parse
         @"akka {
@@ -39,7 +42,7 @@ let clientFunction (clientMailbox:Actor<String>) =
     let rec loop () = actor {
         let! (actionStr: String) = clientMailbox.Receive()
         let actionObj = Json.deserializeEx<MessageType> JsonConfig actionStr
-        printfn "receive obj: %A" actionObj
+        // printfn "receive obj: %A" actionObj
         
         match actionObj.action with
         | "CONNECT" ->
@@ -59,9 +62,14 @@ let clientFunction (clientMailbox:Actor<String>) =
             myUserObj <- Json.deserializeEx<UserObject> JsonConfig actionObj.data
             printfn "update myUserObj %A" myUserObj
 
-        | "TWEET_DATA" -> ()
+        | "OWN_TWEET_DATA" -> 
+            printfn "[Recv response] Get OWN_TWEET_DATA %s" actionObj.data
+            ownTweetList <- Json.deserializeEx<TweetObject list> JsonConfig actionObj.data
+            printfn "update ownTweetList %A" ownTweetList
+
         | "REQUIRE_USERID" ->
             printfn "[Receive from Server] Required REGISTER or SIGNIN"
+
         | "REQUIRE_ACCOUNT" -> ()
         | _ -> printfn "[Invalid Action] client no action match %s" actionObj.action
         

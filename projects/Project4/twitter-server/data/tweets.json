@@ -16,5 +16,23 @@
         "content": "Go Vamost",
         "hashTag": ["#testingBoy", "#Just Do IT"],
         "mention": []
+    },
+    "tweetpost_4": {
+        "userId": "tweetUser_2",
+        "content": "Doing my project on thanks giving @testdeveloper1",
+        "hashTag": ["#ThanksGiving", "#DOS"],
+        "mention": ["@testdeveloper1"]
+    },
+    "tweetpost_5": {
+        "userId": "tweetUser_3",
+        "content": "Just go back to Gainesville, Hola",
+        "hashTag": ["#ThanksGiving"],
+        "mention": []
+    },
+    "tweetpost_6": {
+        "userId": "tweetUser_1",
+        "content": "Duo Duo Duo",
+        "hashTag": ["#BlackPink", "#Just Do IT"],
+        "mention": []
     }
 }

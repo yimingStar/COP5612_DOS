@@ -1,21 +1,21 @@
 module ClientTypes
 
-// Client RECEIVE
+// [Client Receive]
+
+// return data
+// USER_DATA
+// OWN_TWEET_DATA
+// BROWSE_TWEET_DATA
+// ---
 // invalid msg
 // REQUIRE_USERID
 // REQUIRE_ACCOUNT
-// ---
-// return data
-// USER_DATA
-// TWEET_DATA
 
-// Client to Server Actions
+// [Client Request]
 // CONNECT
 // REGISTER
 // SUBSCRIBE
 // TWEET
-
-
 
 type ClientActions = 
     | RequestCONNECTED of string // connect to server
@@ -46,4 +46,11 @@ type UserObject = {
     subscribedList: string list // Array of userID user subscribed
     subscribers: string list
     tweets: string list // Array of userID who subscibed user
+}
+
+type TweetObject = {
+    userId: string
+    content: string
+    hashTag: string list
+    mention: string list
 }

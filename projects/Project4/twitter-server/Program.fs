@@ -45,12 +45,14 @@ let deserializeTweetData() =
 
 // let updateSubsribers
 let getUserTweets(getUserJson) =
-    printfn "getUserTweets %A" getUserJson?tweets 
-    let mutable tweetData = []
+    let mutable tweetDataArr = []
     for tweedId in getUserJson?tweets do
-        printfn "check tweetId %A" tweedId
-        tweetData <- tweetData @ [tweetDataMap |> Map.find (tweedId.AsString())] 
-    tweetData
+        tweetDataArr <- tweetDataArr @ [tweetDataMap |> Map.find (tweedId.AsString())]
+    
+    let mutable tweetsStr = (", ", tweetDataArr) |> System.String.Join
+    tweetsStr <- "[" + tweetsStr + "]"
+    tweetsStr
+
 
 let serverEngine (serverMailbox:Actor<String>) =
     let mutable selfActor = select ("") serverSystem
@@ -91,7 +93,7 @@ let serverEngine (serverMailbox:Actor<String>) =
                 let getUserJson = JsonValue.Parse(usersDataStr)
                 
                 let respTweet: MessageType = {
-                    action = "TWEET_DATA"
+                    action = "OWN_TWEET_DATA"
                     data = getUserTweets(getUserJson).ToString()
                 }
                 sender <! Json.serializeEx JsonConfig respTweet
@@ -134,41 +136,7 @@ let serverEngine (serverMailbox:Actor<String>) =
                 }
                 sender <! Json.serializeEx JsonConfig newResp
                 
-        | "SUBSCRIBE" -> 
-            let data = Json.deserializeEx<CONNECTDATA> JsonConfig actionObj.data
-            if data.userId = "" then
-                printfn "Receive SUBSCRIBE request without userId, request to registered"
-                let resp: MessageType = {
-                    action = "REQUIRE_USERID"
-                    data = ""
-                }
-                sender <! Json.serializeEx JsonConfig resp
-            else
-                let mutable resp: MessageType = {
-                    action = "REQUIRE_USERID"
-                    data = ""
-                }
-                printfn "Receive SUBSCRIBE request from userId %s, return new user object" data.userId
-                let mutable usersDataStr = ""
-                try
-                    usersDataStr <- userDataMap |> Map.find data.userId 
-                    let newResp: MessageType = {
-                        action = "USER_DATA"
-                        data = usersDataStr
-                    }
-                    resp <- newResp
-                with :? KeyNotFoundException as ex -> printfn "Exception! %A " (ex.Message) 
-
-                printfn "resp %A" resp
-                sender <! Json.serializeEx JsonConfig resp
-
-                let getUserJson = JsonValue.Parse(usersDataStr)
-                
-                let respTweet: MessageType = {
-                    action = "TWEET_DATA"
-                    data = getUserTweets(getUserJson).ToString()
-                }
-                sender <! Json.serializeEx JsonConfig respTweet
+        | "SUBSCRIBE" -> ()
         | "TWEET" -> ()
 
         | _ -> printfn "[Invalid Action] server no action match %s" msg

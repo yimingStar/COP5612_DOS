@@ -5,9 +5,10 @@ module ServerTypes
 // SUBSCRIBE
 // TWEET
 
-// Server to Client Actions
+// Server Response
 // REQUIRE_USERID
-// DATA
+// REQUIRE_ACCOUNT
+
 
 type REGISTERDATA = {
     account: string

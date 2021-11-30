@@ -50,6 +50,7 @@ type UserObject = {
 
 type TweetObject = {
     userId: string
+    tweetId: string
     content: string
     hashTag: string list
     mention: string list

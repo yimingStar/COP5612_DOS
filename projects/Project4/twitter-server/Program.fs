@@ -21,6 +21,7 @@ let config =
             }"
         )
 
+let apiSizeLimit = 5
 let serverSystem = System.create "twitterServer" (config)
 let userDataPath = __SOURCE_DIRECTORY__ + "/data/users.json"
 let tweetDataPath = __SOURCE_DIRECTORY__ + "/data/tweets.json"
@@ -49,6 +50,14 @@ let getUserTweets(getUserJson) =
     for tweedId in getUserJson?tweets do
         tweetDataArr <- tweetDataArr @ [tweetDataMap |> Map.find (tweedId.AsString())]
     
+    let mutable tweetsStr = (", ", tweetDataArr) |> System.String.Join
+    tweetsStr <- "[" + tweetsStr + "]"
+    tweetsStr
+
+let getBrowseTweets() =
+    let mutable tweetDataArr = [] 
+    tweetDataMap |> Map.iter (fun key value -> tweetDataArr <- tweetDataArr @ [value])
+
     let mutable tweetsStr = (", ", tweetDataArr) |> System.String.Join
     tweetsStr <- "[" + tweetsStr + "]"
     tweetsStr
@@ -94,7 +103,13 @@ let serverEngine (serverMailbox:Actor<String>) =
                 
                 let respTweet: MessageType = {
                     action = "OWN_TWEET_DATA"
-                    data = getUserTweets(getUserJson).ToString()
+                    data = getUserTweets(getUserJson)
+                }
+                sender <! Json.serializeEx JsonConfig respTweet
+
+                let respTweet: MessageType = {
+                    action = "BROWSE_TWEET_DATA"
+                    data = getBrowseTweets()
                 }
                 sender <! Json.serializeEx JsonConfig respTweet
 

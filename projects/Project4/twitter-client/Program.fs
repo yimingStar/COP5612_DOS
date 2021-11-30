@@ -66,6 +66,11 @@ let clientFunction (clientMailbox:Actor<String>) =
             printfn "[Recv response] Get OWN_TWEET_DATA %s" actionObj.data
             ownTweetList <- Json.deserializeEx<TweetObject list> JsonConfig actionObj.data
             printfn "update ownTweetList %A" ownTweetList
+            
+        | "BROWSE_TWEET_DATA" ->
+            printfn "[Recv response] Get BROWSE_TWEET_DATA %s" actionObj.data
+            browsingTweetList <- Json.deserializeEx<TweetObject list> JsonConfig actionObj.data
+            printfn "update browsingTweetList %A" browsingTweetList
 
         | "REQUIRE_USERID" ->
             printfn "[Receive from Server] Required REGISTER or SIGNIN"

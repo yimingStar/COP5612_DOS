@@ -9,6 +9,7 @@ open FSharp.Data.JsonExtensions
 open ClientTypes
 
 let mutable myUserObj: UserObject = {
+    userId = ""
     account = ""
     subscribedList = []
     subscribers = []
@@ -48,15 +49,19 @@ let clientFunction (clientMailbox:Actor<String>) =
         | "CONNECT" ->
             printfn "[Send request] Send CONNECT to server"
             server <! actionStr
+
         | "REGISTER" -> 
             printfn "[Send request] Send REGISTER to server"
             server <! actionStr
+
         | "SUBSCRIBE" ->
             printfn "[Send request] Send SUBSCRIBE to server"
             server <! actionStr
+
         | "TWEET" ->
             printfn "[Send request] Send TWEET to server"
             server <! actionStr
+            
         | "USER_DATA" ->
             printfn "[Recv response] Get USER_DATA %s" actionObj.data
             myUserObj <- Json.deserializeEx<UserObject> JsonConfig actionObj.data
@@ -73,9 +78,11 @@ let clientFunction (clientMailbox:Actor<String>) =
             printfn "update browsingTweetList %A" browsingTweetList
 
         | "REQUIRE_USERID" ->
-            printfn "[Receive from Server] Required REGISTER or SIGNIN"
+            printfn "[Recv response] Error Code 400 - Required REGISTER or SIGNIN"
 
-        | "REQUIRE_ACCOUNT" -> ()
+        | "REQUIRE_ACCOUNT" ->
+            printfn "[Recv response] Error Code 400 - Required REQUIRE_ACCOUNT"
+
         | _ -> printfn "[Invalid Action] client no action match %s" actionObj.action
         
         return! loop()
@@ -124,21 +131,26 @@ let rec readLinesFromConsole() =
 
                 | "SUBSCRIBE" ->
                     let userId = if inputStrings.Length > 1 then inputStrings.[1] else ""
+                    let targetUserId = if inputStrings.Length > 2 then inputStrings.[2] else ""
                     printfn "[Recieve Action String] send SUBSCRIBE to client actor with userID: %s" userId
                     
-                    let inputData: SUBSCRIBEDATA = {
-                        targeUserId = userId
-                        userId = userId
-                    }
+                    if myUserObj.userId = "" then
+                        printfn "[Invalid Action] Error Code 401 - Unable SUBSCRIBE, please CONNECT or REGISTER first!"
+                    else if myUserObj.userId <> userId then
+                        printfn "[Invalid Action] Error Code 403 - Unable SUBSCRIBE"
+                    else 
+                        let inputData: SUBSCRIBEDATA = {
+                            targeUserId = targetUserId
+                            userId = userId
+                        }
 
-                    let sendRequest: MessageType = {
-                        action = "SUBSCRIBE"
-                        data = Json.serializeEx JsonConfig inputData
-                    }
+                        let sendRequest: MessageType = {
+                            action = "SUBSCRIBE"
+                            data = Json.serializeEx JsonConfig inputData
+                        }
+                        clientActor <! Json.serializeEx JsonConfig sendRequest
 
-                    clientActor <! Json.serializeEx JsonConfig sendRequest
-
-                | _ -> printfn "[Invalid Action] no action match: %s" setActionStr
+                | _ -> printfn "[Invalid Action] Error Code 403 - no action match: %s" setActionStr
         else 
             printfn "%s" line
     readLinesFromConsole ()

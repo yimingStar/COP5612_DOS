@@ -1,18 +1,28 @@
 {
     "numUser": 3,
-    "tweetUser_1": {
+    "test": {
+        "userId": "test",
         "account": "testdeveloper",
+        "subscribedList": [],
+        "subscribers": [],
+        "tweets": []
+    },
+    "tweetUser_1": {
+        "userId": "tweetUser_1",
+        "account": "tommy999",
         "subscribedList": [],
         "subscribers": [],
         "tweets": ["tweetpost_1", "tweetpost_3", "tweetpost_6"]
     },
     "tweetUser_2": {
-        "account": "testdeveloper2",
+        "userId": "tweetUser_2",
+        "account": "Joenne1232",
         "subscribedList": [],
         "subscribers": [],
         "tweets": ["tweetpost_2", "tweetpost_4"]
     },
     "tweetUser_3": {
+        "userId": "tweetUser_3",
         "account": "doWhoIam",
         "subscribedList": [],
         "subscribers": [],

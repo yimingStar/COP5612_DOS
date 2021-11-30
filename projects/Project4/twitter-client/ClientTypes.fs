@@ -42,11 +42,12 @@ type MessageType = {
 
 // using object to simulate getting data from database
 type UserObject = {
+    userId: string
     account: string
-    subscribedList: string list // Array of userID user subscribed
-    subscribers: string list
-    tweets: string list // Array of userID who subscibed user
-}
+    mutable subscribedList: string list // List of userID user subscribed
+    mutable subscribers: string list // List of userID who subscibed user
+    mutable tweets: string list 
+}  
 
 type TweetObject = {
     userId: string

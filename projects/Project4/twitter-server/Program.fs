@@ -74,7 +74,7 @@ let serverEngine (serverMailbox:Actor<String>) =
         | "CONNECT" ->
             let data = Json.deserializeEx<CONNECTDATA> JsonConfig actionObj.data
             if data.userId = "" then
-                printfn "Receive CONNECT request without userId, request to registered"
+                printfn "Receive %s request without userId, request to registered" actionObj.action
                 let resp: MessageType = {
                     action = "REQUIRE_USERID"
                     data = ""
@@ -116,14 +116,14 @@ let serverEngine (serverMailbox:Actor<String>) =
         | "REGISTER" -> 
             let data = Json.deserializeEx<REGISTERDATA> JsonConfig actionObj.data
             if data.account = "" then
-                printfn "Receive REGISTER request without account, request to resend"
+                printfn "Invalid Action %s, request to resend" actionObj.action
                 let resp: MessageType = {
                     action = "REQUIRE_ACCOUNT"
                     data = ""
                 }
                 sender <! Json.serializeEx JsonConfig resp
             else
-                printfn "Receive REGISTER request with account %s, create user object and return" data.account
+                printfn "Receive %s request with account %s, create user object and return" actionObj.action data.account
                 
                 // Create UseId
                 let numUser = userDataMap |> Map.find "numUser" |> string |> int
@@ -133,6 +133,7 @@ let serverEngine (serverMailbox:Actor<String>) =
                 printfn "check new userId: %s" newUserId
                 // Create User Object and Store
                 let newUserObj: UserObject = {
+                    userId = newUserId
                     account = data.account
                     subscribedList = []
                     subscribers = []
@@ -151,7 +152,39 @@ let serverEngine (serverMailbox:Actor<String>) =
                 }
                 sender <! Json.serializeEx JsonConfig newResp
                 
-        | "SUBSCRIBE" -> ()
+        | "SUBSCRIBE" -> 
+            let data = Json.deserializeEx<SUBSCRIBEDATA> JsonConfig actionObj.data
+            if data.targeUserId = "" || data.userId = "" then
+                printfn "Invalid Action %s, request to resend" actionObj.action
+                let resp: MessageType = {
+                    action = "REQUIRE_USERID"
+                    data = ""
+                }
+                sender <! Json.serializeEx JsonConfig resp
+            else
+                printfn "Receive %s request to userId %s" actionObj.action data.targeUserId
+
+                let mutable usersDataStr = ""
+                let mutable targetDataStr = ""
+                try
+                    // update user subscribedList and update target user subscribers
+                    usersDataStr <- userDataMap |> Map.find data.userId
+                    let userObj = Json.deserializeEx<UserObject> JsonConfig (usersDataStr) 
+                    targetDataStr <- userDataMap |> Map.find data.targeUserId 
+                    let mutable targetUserObj = Json.deserializeEx<UserObject> JsonConfig (targetDataStr) 
+
+                    targetUserObj.subscribers <- targetUserObj.subscribers @ [data.userId]
+                    userObj.subscribedList <- targetUserObj.subscribedList @ [data.targeUserId]
+
+                    usersDataStr <- Json.serializeEx JsonConfig userObj 
+                with :? KeyNotFoundException as ex -> printfn "Exception! %A " (ex.Message) 
+                
+                let mutable resp: MessageType = {
+                    action = "USER_DATA"
+                    data = usersDataStr
+                }
+                sender <! Json.serializeEx JsonConfig resp
+                
         | "TWEET" -> ()
 
         | _ -> printfn "[Invalid Action] server no action match %s" msg

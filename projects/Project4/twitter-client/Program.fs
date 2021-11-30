@@ -63,19 +63,19 @@ let clientFunction (clientMailbox:Actor<String>) =
             server <! actionStr
             
         | "USER_DATA" ->
-            printfn "[Recv response] Get USER_DATA %s" actionObj.data
+            printfn "[Recv response] Get USER_DATA %s\n" actionObj.data
             myUserObj <- Json.deserializeEx<UserObject> JsonConfig actionObj.data
-            printfn "update myUserObj %A" myUserObj
 
         | "OWN_TWEET_DATA" -> 
-            printfn "[Recv response] Get OWN_TWEET_DATA %s" actionObj.data
+            printfn "[Recv response] Get OWN_TWEET_DATA %s\n" actionObj.data
             ownTweetList <- Json.deserializeEx<TweetObject list> JsonConfig actionObj.data
-            printfn "update ownTweetList %A" ownTweetList
             
         | "BROWSE_TWEET_DATA" ->
-            printfn "[Recv response] Get BROWSE_TWEET_DATA %s" actionObj.data
+            printfn "[Recv response] Get BROWSE_TWEET_DATA %s\n" actionObj.data
             browsingTweetList <- Json.deserializeEx<TweetObject list> JsonConfig actionObj.data
-            printfn "update browsingTweetList %A" browsingTweetList
+        
+        | "NEW_TWEET_DATA" ->
+            printfn "[Recv response] Get NEW_TWEET_DATA %s\n" actionObj.data
 
         | "REQUIRE_USERID" ->
             printfn "[Recv response] Error Code 400 - Required REGISTER or SIGNIN"
@@ -94,8 +94,6 @@ let rec readLinesFromConsole() =
     let line = Console.ReadLine()
     if line <> null then
         let inputStrings = line.Split [|' '|]
-        printfn "Your input is: %A" inputStrings
-        
         if inputStrings.Length > 0 then
             let setActionStr = inputStrings.[0]
             match setActionStr with
@@ -150,6 +148,29 @@ let rec readLinesFromConsole() =
                         }
                         clientActor <! Json.serializeEx JsonConfig sendRequest
 
+                | "TWEET" ->
+                    let userId = if inputStrings.Length > 1 then inputStrings.[1] else ""
+                    let content = if inputStrings.Length > 2 then inputStrings.[2] else ""
+                    printfn "[Recieve Action String] send SUBSCRIBE to client actor with userID: %s" userId
+                    
+                    if myUserObj.userId = "" then
+                        printfn "[Invalid Action] Error Code 401 - Unable SUBSCRIBE, please CONNECT or REGISTER first!"
+                    else if myUserObj.userId <> userId then
+                        printfn "[Invalid Action] Error Code 403 - Unable SUBSCRIBE"
+                    else if content = "" then
+                        printfn "[Invalid Action] Error Code 400 - Missing content"
+                    else 
+                        let inputData: TWEET_RAW_DATA = {
+                            userId = userId
+                            content = content
+                        }
+
+                        let sendRequest: MessageType = {
+                            action = "TWEET"
+                            data = Json.serializeEx JsonConfig inputData
+                        }
+                        clientActor <! Json.serializeEx JsonConfig sendRequest
+                | "" -> ()
                 | _ -> printfn "[Invalid Action] Error Code 403 - no action match: %s" setActionStr
         else 
             printfn "%s" line

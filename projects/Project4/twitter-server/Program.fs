@@ -25,13 +25,15 @@ let apiSizeLimit = 5
 let serverSystem = System.create "twitterServer" (config)
 let userDataPath = __SOURCE_DIRECTORY__ + "/data/users.json"
 let tweetDataPath = __SOURCE_DIRECTORY__ + "/data/tweets.json"
+let settingPath = __SOURCE_DIRECTORY__ + "/data/setting.json"
 
 let JsonConfig = JsonConfig.create(allowUntyped = true)
 let mutable userDataMap = Map.empty
 let mutable tweetDataMap = Map.empty
 let loadedUserData = JsonValue.Load(userDataPath).Properties
 let loadedTweets = JsonValue.Load(tweetDataPath).Properties
-
+let loadedSetting = JsonValue.Load(settingPath) |> string
+let settingObj = Json.deserializeEx<ServerSettings> JsonConfig loadedSetting
 
 let deserializeUserData() =
     for user in loadedUserData do
@@ -126,9 +128,8 @@ let serverEngine (serverMailbox:Actor<String>) =
                 printfn "Receive %s request with account %s, create user object and return" actionObj.action data.account
                 
                 // Create UseId
-                let numUser = userDataMap |> Map.find "numUser" |> string |> int
-                let newNumUser = numUser + 1
-                let newUserId = sprintf "%s%d" userIdPrefix newNumUser
+                let newNumUsers = settingObj.numUsers + 1
+                let newUserId = sprintf "%s%d" userIdPrefix (newNumUsers)
 
                 printfn "check new userId: %s" newUserId
                 // Create User Object and Store
@@ -140,17 +141,17 @@ let serverEngine (serverMailbox:Actor<String>) =
                     tweets = []
                 }
 
-                let usersDataStr = newUserObj |> string
+                let usersDataStr = Json.serializeEx JsonConfig newUserObj
                 // printfn "check new newUserObj: %A" newUserObj
                 userDataMap <- userDataMap.Add(newUserId, usersDataStr)
-                userDataMap <- userDataMap.Add("numUser", newNumUser |> string)
+                settingObj.numUsers <- newNumUsers
 
                 // printfn "check new userDataMap: %A" userDataMap
-                let newResp: MessageType = {
+                let mutable resp: MessageType = {
                     action = "USER_DATA"
                     data = usersDataStr
                 }
-                sender <! Json.serializeEx JsonConfig newResp
+                sender <! Json.serializeEx JsonConfig resp
                 
         | "SUBSCRIBE" -> 
             let data = Json.deserializeEx<SUBSCRIBEDATA> JsonConfig actionObj.data
@@ -170,13 +171,20 @@ let serverEngine (serverMailbox:Actor<String>) =
                     // update user subscribedList and update target user subscribers
                     usersDataStr <- userDataMap |> Map.find data.userId
                     let userObj = Json.deserializeEx<UserObject> JsonConfig (usersDataStr) 
+                    userObj.subscribedList <- userObj.subscribedList @ [data.targeUserId]
+                    
                     targetDataStr <- userDataMap |> Map.find data.targeUserId 
                     let mutable targetUserObj = Json.deserializeEx<UserObject> JsonConfig (targetDataStr) 
-
                     targetUserObj.subscribers <- targetUserObj.subscribers @ [data.userId]
-                    userObj.subscribedList <- targetUserObj.subscribedList @ [data.targeUserId]
 
-                    usersDataStr <- Json.serializeEx JsonConfig userObj 
+
+                    targetDataStr <- Json.serializeEx JsonConfig targetUserObj
+                    usersDataStr <- Json.serializeEx JsonConfig userObj
+
+                    userDataMap <- userDataMap.Add(data.targeUserId, targetDataStr)
+                    userDataMap <- userDataMap.Add(data.userId, usersDataStr)
+
+                    usersDataStr <- Json.serializeEx JsonConfig userObj
                 with :? KeyNotFoundException as ex -> printfn "Exception! %A " (ex.Message) 
                 
                 let mutable resp: MessageType = {
@@ -185,7 +193,42 @@ let serverEngine (serverMailbox:Actor<String>) =
                 }
                 sender <! Json.serializeEx JsonConfig resp
                 
-        | "TWEET" -> ()
+        | "TWEET" -> 
+            // 1. Create new Tweet obj, update tweet list
+            // 2. Update user tweet list
+            // 3. Broadcast to all suscribers
+
+            let data = Json.deserializeEx<TWEET_RAW_DATA> JsonConfig actionObj.data
+
+            // 1. Create new Tweet obj, update tweet list
+            let newNumTweets = settingObj.numTweets + 1 
+            let newTweetId = sprintf "%s%d" tweetIdPrefix newNumTweets
+
+            let newTweetObj: TweetObject = {
+                userId = data.userId
+                tweetId = newTweetId
+                content = data.content
+                hashTag = []
+                mention = []
+            }
+
+            let tweetDataStr = newTweetObj |> string
+            tweetDataMap <- tweetDataMap.Add(newTweetId, tweetDataStr)
+            settingObj.numTweets <- newNumTweets 
+            
+            // 2. Update user tweet list
+            let mutable usersDataStr = ""
+            try
+                usersDataStr <- userDataMap |> Map.find data.userId
+                let userObj = Json.deserializeEx<UserObject> JsonConfig (usersDataStr) 
+                userObj.tweets <- userObj.tweets @ [newTweetId]
+            with :? KeyNotFoundException as ex -> printfn "Exception! %A " (ex.Message) 
+
+            let mutable resp: MessageType = {
+                action = "USER_DATA"
+                data = usersDataStr
+            }
+            sender <! Json.serializeEx JsonConfig resp
 
         | _ -> printfn "[Invalid Action] server no action match %s" msg
         return! loop()

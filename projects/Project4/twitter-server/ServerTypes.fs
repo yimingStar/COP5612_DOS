@@ -17,14 +17,10 @@ module ServerTypes
 // SUBSCRIBE
 // TWEET
 
-// using object to simulate getting data from database
-type UserObject = {
+type TWEET_RAW_DATA = {
     userId: string
-    account: string
-    mutable subscribedList: string list // List of userID user subscribed
-    mutable subscribers: string list // List of userID who subscibed user
-    mutable tweets: string list 
-}  
+    content: string
+}
 
 type SUBSCRIBEDATA = {
     targeUserId: string
@@ -45,3 +41,26 @@ type MessageType = {
 }
 
 let userIdPrefix = "tweetUser_"
+let tweetIdPrefix = "tweetpost_"
+
+// using object to simulate getting data from database
+type UserObject = {
+    userId: string
+    account: string
+    mutable subscribedList: string list // List of userID user subscribed
+    mutable subscribers: string list // List of userID who subscibed user
+    mutable tweets: string list 
+}
+
+type TweetObject = {
+    userId: string
+    tweetId: string
+    content: string
+    hashTag: string list
+    mention: string list
+}
+
+type ServerSettings = {
+    mutable numTweets: int
+    mutable numUsers: int
+}

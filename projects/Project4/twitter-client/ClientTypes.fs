@@ -30,6 +30,11 @@ type REGISTERDATA = {
     account: string
 }
 
+type TWEET_RAW_DATA = {
+    userId: string
+    content: string
+}
+
 type SUBSCRIBEDATA = {
     targeUserId: string
     userId: string

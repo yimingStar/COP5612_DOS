@@ -98,9 +98,9 @@ let rec readLinesFromConsole() =
             let setActionStr = inputStrings.[0]
             match setActionStr with
                 | "CONNECT" ->
-                    let userId = if inputStrings.Length > 1 then inputStrings.[1] else ""
+                    let userId = myUserObj.userId
                     printfn "[Recieve Action String] send CONNECT to client actor with userID: %s" userId
-                    
+
                     let inputData: CONNECTDATA = {
                         userId = userId
                     }
@@ -111,7 +111,6 @@ let rec readLinesFromConsole() =
                     }
 
                     clientActor <! Json.serializeEx JsonConfig sendRequest
-
                 | "REGISTER" ->
                     let userAccount = if inputStrings.Length > 1 then inputStrings.[1] else ""
                     printfn "[Recieve Action String] send REGISTER to client actor with account: %s" userAccount
@@ -128,18 +127,15 @@ let rec readLinesFromConsole() =
                     clientActor <! Json.serializeEx JsonConfig sendRequest
 
                 | "SUBSCRIBE" ->
-                    let userId = if inputStrings.Length > 1 then inputStrings.[1] else ""
-                    let targetUserId = if inputStrings.Length > 2 then inputStrings.[2] else ""
-                    printfn "[Recieve Action String] send SUBSCRIBE to client actor with userID: %s" userId
+                    let targetUserId = if inputStrings.Length > 1 then inputStrings.[1] else ""
+                    printfn "[Recieve Action String] send SUBSCRIBE to client actor with userID: %s" myUserObj.userId
                     
                     if myUserObj.userId = "" then
                         printfn "[Invalid Action] Error Code 401 - Unable SUBSCRIBE, please CONNECT or REGISTER first!"
-                    else if myUserObj.userId <> userId then
-                        printfn "[Invalid Action] Error Code 403 - Unable SUBSCRIBE"
                     else 
                         let inputData: SUBSCRIBEDATA = {
                             targeUserId = targetUserId
-                            userId = userId
+                            userId = myUserObj.userId
                         }
 
                         let sendRequest: MessageType = {
@@ -149,19 +145,16 @@ let rec readLinesFromConsole() =
                         clientActor <! Json.serializeEx JsonConfig sendRequest
 
                 | "TWEET" ->
-                    let userId = if inputStrings.Length > 1 then inputStrings.[1] else ""
-                    let content = if inputStrings.Length > 2 then inputStrings.[2] else ""
-                    printfn "[Recieve Action String] send TWEET to client actor with userID: %s" userId
+                    let content = if inputStrings.Length > 1 then inputStrings.[1] else ""
+                    printfn "[Recieve Action String] send TWEET to client actor with userID: %s" myUserObj.userId
                     
                     if myUserObj.userId = "" then
                         printfn "[Invalid Action] Error Code 401 - Unable SUBSCRIBE, please CONNECT or REGISTER first!"
-                    else if myUserObj.userId <> userId then
-                        printfn "[Invalid Action] Error Code 403 - Unable SUBSCRIBE"
                     else if content = "" then
                         printfn "[Invalid Action] Error Code 400 - Missing content"
                     else 
                         let inputData: TWEET_RAW_DATA = {
-                            userId = userId
+                            userId = myUserObj.userId
                             content = content
                         }
 

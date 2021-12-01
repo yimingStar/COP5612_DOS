@@ -132,7 +132,8 @@ let serverEngine (serverMailbox:Actor<String>) =
                 
                 // Create UseId
                 let newNumUsers = settingObj.numUsers + 1
-                let newUserId = sprintf "%s%d" userIdPrefix (newNumUsers)
+                // let newUserId = sprintf "%s%d" userIdPrefix (newNumUsers)
+                let newUserId = data.account
 
                 printfn "check new userId: %s" newUserId
                 // Create User Object and Store

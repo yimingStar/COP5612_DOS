@@ -34,6 +34,7 @@ let loadedUserData = JsonValue.Load(userDataPath).Properties
 let loadedTweets = JsonValue.Load(tweetDataPath).Properties
 let loadedSetting = JsonValue.Load(settingPath) |> string
 let settingObj = Json.deserializeEx<ServerSettings> JsonConfig loadedSetting
+let mutable userConnectedMap = Map.empty // <userId, Akka path>
 
 let deserializeUserData() =
     for user in loadedUserData do
@@ -66,7 +67,6 @@ let getBrowseTweets() =
 
 
 let serverEngine (serverMailbox:Actor<String>) =
-    let mutable selfActor = select ("") serverSystem
     let rec loop () = actor {
         let! (msg: String) = serverMailbox.Receive()
         let sender = serverMailbox.Sender()
@@ -96,6 +96,8 @@ let serverEngine (serverMailbox:Actor<String>) =
                         data = usersDataStr
                     }
                     resp <- newResp
+                    printfn "Receive CONNECT from userId %s with path %s" data.userId (sender.Path.ToString())
+                    userConnectedMap <- userConnectedMap.Add(data.userId, sender.Path.ToString())
                 with :? KeyNotFoundException as ex -> printfn "Exception! %A " (ex.Message) 
 
                 printfn "resp %A" resp
@@ -114,6 +116,7 @@ let serverEngine (serverMailbox:Actor<String>) =
                     data = getBrowseTweets()
                 }
                 sender <! Json.serializeEx JsonConfig respTweet
+                
 
         | "REGISTER" -> 
             let data = Json.deserializeEx<REGISTERDATA> JsonConfig actionObj.data
@@ -211,17 +214,33 @@ let serverEngine (serverMailbox:Actor<String>) =
                 hashTag = []
                 mention = []
             }
-
-            let tweetDataStr = newTweetObj |> string
+            
+            printfn ""
+            let tweetDataStr = Json.serializeEx JsonConfig newTweetObj 
             tweetDataMap <- tweetDataMap.Add(newTweetId, tweetDataStr)
             settingObj.numTweets <- newNumTweets 
             
-            // 2. Update user tweet list
             let mutable usersDataStr = ""
             try
+                // 2. Update user tweet list
                 usersDataStr <- userDataMap |> Map.find data.userId
                 let userObj = Json.deserializeEx<UserObject> JsonConfig (usersDataStr) 
                 userObj.tweets <- userObj.tweets @ [newTweetId]
+                usersDataStr <- Json.serializeEx JsonConfig userObj
+                
+                // 3. Broadcast to subscribers
+                for subsribersId in userObj.subscribers do
+                    printfn "%s" subsribersId
+                    if userConnectedMap.ContainsKey(subsribersId) then
+                        let subscriberPath = userConnectedMap.[subsribersId]
+                        let subsriberActor = select (subscriberPath) serverSystem
+
+                        let mutable tweetMsg: MessageType = {
+                            action = "NEW_TWEET_DATA"
+                            data = tweetDataStr
+                        }
+                        subsriberActor <! Json.serializeEx JsonConfig tweetMsg
+
             with :? KeyNotFoundException as ex -> printfn "Exception! %A " (ex.Message) 
 
             let mutable resp: MessageType = {

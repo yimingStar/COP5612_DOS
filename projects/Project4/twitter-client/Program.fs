@@ -151,7 +151,7 @@ let rec readLinesFromConsole() =
                 | "TWEET" ->
                     let userId = if inputStrings.Length > 1 then inputStrings.[1] else ""
                     let content = if inputStrings.Length > 2 then inputStrings.[2] else ""
-                    printfn "[Recieve Action String] send SUBSCRIBE to client actor with userID: %s" userId
+                    printfn "[Recieve Action String] send TWEET to client actor with userID: %s" userId
                     
                     if myUserObj.userId = "" then
                         printfn "[Invalid Action] Error Code 401 - Unable SUBSCRIBE, please CONNECT or REGISTER first!"

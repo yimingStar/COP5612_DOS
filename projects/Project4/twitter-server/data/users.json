@@ -1,0 +1,30 @@
+{
+    "test": {
+        "userId": "test",
+        "account": "testdeveloper",
+        "subscribedList": [],
+        "subscribers": ["tweetUser_1", "tweetUser_2", "tweetUser_3"],
+        "tweets": []
+    },
+    "tweetUser_1": {
+        "userId": "tweetUser_1",
+        "account": "tommy999",
+        "subscribedList": ["test"],
+        "subscribers": [],
+        "tweets": ["tweetpost_1", "tweetpost_3", "tweetpost_6"]
+    },
+    "tweetUser_2": {
+        "userId": "tweetUser_2",
+        "account": "Joenne1232",
+        "subscribedList": ["test"],
+        "subscribers": [],
+        "tweets": ["tweetpost_2", "tweetpost_4"]
+    },
+    "tweetUser_3": {
+        "userId": "tweetUser_3",
+        "account": "doWhoIam",
+        "subscribedList": ["test"],
+        "subscribers": [],
+        "tweets": ["tweetpost_5"]
+    }
+}

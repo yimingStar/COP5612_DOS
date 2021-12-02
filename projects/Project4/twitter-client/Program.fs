@@ -98,7 +98,7 @@ let rec readLinesFromConsole() =
             let setActionStr = inputStrings.[0]
             match setActionStr with
                 | "CONNECT" ->
-                    let userId = myUserObj.userId
+                    let userId = if inputStrings.Length > 1 then inputStrings.[1] else ""
                     printfn "[Recieve Action String] send CONNECT to client actor with userID: %s" userId
 
                     let inputData: CONNECTDATA = {
@@ -111,6 +111,7 @@ let rec readLinesFromConsole() =
                     }
 
                     clientActor <! Json.serializeEx JsonConfig sendRequest
+                    
                 | "REGISTER" ->
                     let userAccount = if inputStrings.Length > 1 then inputStrings.[1] else ""
                     printfn "[Recieve Action String] send REGISTER to client actor with account: %s" userAccount

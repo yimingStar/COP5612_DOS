@@ -37,7 +37,8 @@ module Site =
     let HomePage ctx =
         // let clientWS = WebSocketModule.Create()
         WebSocketModule.Connect "1" |> ignore
-
+        WebSocketModule.startSocketListener()
+        
         Templating.Main ctx EndPoint.Home "Twitter Client" [
             h1 [] [text "Send Tweet"]
             div [] [client <@ Client.Main() @>]

@@ -27,29 +27,22 @@ module WebSocketModule =
         let tk = Async.DefaultCancellationToken
         Async.AwaitTask(clientWS.SendAsync(ArraySegment(req), WebSocketMessageType.Text, true, tk))
     
-    let Read() = 
+    let startSocketListener() = 
         let loop = true
         async {
             while loop do
-                let buf = Array.zeroCreate 4096
-                let buffer = ArraySegment(buf)
-                let tk = Async.DefaultCancellationToken
-                let r =  Async.AwaitTask(clientWS.ReceiveAsync(buffer, tk)) |> Async.RunSynchronously
-                if not r.EndOfMessage then failwith "too lazy to receive more!"
-                let resp = Encoding.UTF8.GetString(buf, 0, r.Count)
-                if resp <> "" then
-                    printfn "WebSocket: %s" resp
-                else
-                    printfn "Received empty response from server"
+                try 
+                    let buf = Array.zeroCreate 4096
+                    let buffer = ArraySegment(buf)
+                    let tk = Async.DefaultCancellationToken
+                    let r =  Async.AwaitTask(clientWS.ReceiveAsync(buffer, tk)) |> Async.RunSynchronously
+                    if not r.EndOfMessage then failwith "too lazy to receive more!"
+                    let resp = Encoding.UTF8.GetString(buf, 0, r.Count)
+                    if resp <> "" then
+                        printfn "Received from server: %s" resp
+                    else
+                        printfn "Received empty response from server"
+                with ex ->
+                    printfn "exeption receiving in websocket, ex: %A" ex
         } |> Async.Start
-
-    let startListener() = 
-        let SocketListerTask = async {
-            let rec loop () = async {
-                Read()
-                return! loop()
-            }
-            do! loop() 
-        }
-        Async.Start(SocketListerTask)
 

@@ -1351,6 +1351,18 @@
           "lib/netstandard2.0/WebSharper.AspNetCore.dll": {}
         }
       },
+      "WebSharper.AspNetCore.WebSocket/5.0.0.119": {
+        "type": "package",
+        "dependencies": {
+          "WebSharper.AspNetCore": "[5.0.0, 5.1.0)"
+        },
+        "compile": {
+          "lib/netstandard2.0/WebSharper.AspNetCore.WebSocket.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard2.0/WebSharper.AspNetCore.WebSocket.dll": {}
+        }
+      },
       "WebSharper.FSharp/5.0.0.120": {
         "type": "package",
         "dependencies": {
@@ -4556,6 +4568,19 @@
         "websharper.aspnetcore.nuspec"
       ]
     },
+    "WebSharper.AspNetCore.WebSocket/5.0.0.119": {
+      "sha512": "iUarWwSbWm3dN3f/nNR36+wzMG5RgCqPVtRuTEgv/2dKFNVO9MVU188U+7rZJx8zlIhDWNN2CPWx/TpBdA4sfg==",
+      "type": "package",
+      "path": "websharper.aspnetcore.websocket/5.0.0.119",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "lib/netstandard2.0/WebSharper.AspNetCore.WebSocket.dll",
+        "lib/netstandard2.0/WebSharper.AspNetCore.WebSocket.xml",
+        "websharper.aspnetcore.websocket.5.0.0.119.nupkg.sha512",
+        "websharper.aspnetcore.websocket.nuspec"
+      ]
+    },
     "WebSharper.FSharp/5.0.0.120": {
       "sha512": "Hpl2+xgIQgnyuKJIL9bnsmb1GMFhWuyGGNLmgOVnNXvutZyP52meeiv2VDzHuaOw8zZGRSrNmDxHAZs73fvTXA==",
       "type": "package",
@@ -4832,6 +4857,7 @@
       "FSharp.Core >= 5.0.0",
       "WebSharper >= 5.0.0.120",
       "WebSharper.AspNetCore >= 5.0.0.120",
+      "WebSharper.AspNetCore.WebSocket >= 5.0.0.119",
       "WebSharper.FSharp >= 5.0.0.120",
       "WebSharper.UI >= 5.0.0.120"
     ]
@@ -4882,6 +4908,11 @@
           "WebSharper.AspNetCore": {
             "target": "Package",
             "version": "[5.0.0.120, )",
+            "generatePathProperty": true
+          },
+          "WebSharper.AspNetCore.WebSocket": {
+            "target": "Package",
+            "version": "[5.0.0.119, )",
             "generatePathProperty": true
           },
           "WebSharper.FSharp": {

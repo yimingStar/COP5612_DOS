@@ -7,7 +7,7 @@ open WebSharper.UI.Server
 
 type EndPoint =
     | [<EndPoint "/">] Home
-    | [<EndPoint "/about">] About
+    | [<EndPoint "/tweet-list">] TweetList
 
 module Templating =
     open WebSharper.UI.Html
@@ -20,7 +20,7 @@ module Templating =
              ]
         [
             "Home" => EndPoint.Home
-            "About" => EndPoint.About
+            "TweetList" => EndPoint.TweetList
         ]
 
     let Main ctx action (title: string) (body: Doc list) =
@@ -36,14 +36,14 @@ module Site =
     open WebSharper.UI.Html
 
     let HomePage ctx =
-        Templating.Main ctx EndPoint.Home "Home" [
-            h1 [] [text "Say Hi to the server!"]
+        Templating.Main ctx EndPoint.Home "Twitter Client" [
+            h1 [] [text "Send Tweet"]
             div [] [client <@ Client.Main() @>]
         ]
 
-    let AboutPage ctx =
-        Templating.Main ctx EndPoint.About "About" [
-            h1 [] [text "About"]
+    let TweetListPage ctx =
+        Templating.Main ctx EndPoint.TweetList "Tweet List" [
+            h1 [] [text "Tweet List"]
             p [] [text "This is a template WebSharper client-server application."]
         ]
 
@@ -52,5 +52,5 @@ module Site =
         Application.MultiPage (fun ctx endpoint ->
             match endpoint with
             | EndPoint.Home -> HomePage ctx
-            | EndPoint.About -> AboutPage ctx
+            | EndPoint.TweetList -> TweetListPage ctx
         )

@@ -21,5 +21,6 @@
     <PkgWebSharper_UI Condition=" '$(PkgWebSharper_UI)' == '' ">C:\Users\ericd\.nuget\packages\websharper.ui\5.0.0.120</PkgWebSharper_UI>
     <PkgWebSharper_FSharp Condition=" '$(PkgWebSharper_FSharp)' == '' ">C:\Users\ericd\.nuget\packages\websharper.fsharp\5.0.0.120</PkgWebSharper_FSharp>
     <PkgWebSharper_AspNetCore Condition=" '$(PkgWebSharper_AspNetCore)' == '' ">C:\Users\ericd\.nuget\packages\websharper.aspnetcore\5.0.0.120</PkgWebSharper_AspNetCore>
+    <PkgWebSharper_AspNetCore_WebSocket Condition=" '$(PkgWebSharper_AspNetCore_WebSocket)' == '' ">C:\Users\ericd\.nuget\packages\websharper.aspnetcore.websocket\5.0.0.119</PkgWebSharper_AspNetCore_WebSocket>
   </PropertyGroup>
 </Project>

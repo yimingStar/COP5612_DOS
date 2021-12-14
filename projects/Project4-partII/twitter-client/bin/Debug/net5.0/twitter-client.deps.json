@@ -36,6 +36,7 @@
           "FSharp.Core": "5.0.0",
           "WebSharper": "5.0.0.120",
           "WebSharper.AspNetCore": "5.0.0.120",
+          "WebSharper.AspNetCore.WebSocket": "5.0.0.119",
           "WebSharper.FSharp": "5.0.0.120",
           "WebSharper.UI": "5.0.0.120",
           "Microsoft.AspNetCore.Antiforgery": "5.0.0.0",
@@ -1092,6 +1093,20 @@
         },
         "compile": {
           "lib/netstandard2.0/WebSharper.AspNetCore.dll": {}
+        }
+      },
+      "WebSharper.AspNetCore.WebSocket/5.0.0.119": {
+        "dependencies": {
+          "WebSharper.AspNetCore": "5.0.0.120"
+        },
+        "runtime": {
+          "lib/netstandard2.0/WebSharper.AspNetCore.WebSocket.dll": {
+            "assemblyVersion": "5.0.0.0",
+            "fileVersion": "5.0.0.119"
+          }
+        },
+        "compile": {
+          "lib/netstandard2.0/WebSharper.AspNetCore.WebSocket.dll": {}
         }
       },
       "WebSharper.FSharp/5.0.0.120": {
@@ -3443,6 +3458,13 @@
       "sha512": "sha512-0i2WN8byyU7ssY7MFvRoH24Wt/S+RyZRtFT/fT3zer1cdj9uJaaBISCP2TEHb/syCfQ4KNyXM0dMo8QYT55uTA==",
       "path": "websharper.aspnetcore/5.0.0.120",
       "hashPath": "websharper.aspnetcore.5.0.0.120.nupkg.sha512"
+    },
+    "WebSharper.AspNetCore.WebSocket/5.0.0.119": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-iUarWwSbWm3dN3f/nNR36+wzMG5RgCqPVtRuTEgv/2dKFNVO9MVU188U+7rZJx8zlIhDWNN2CPWx/TpBdA4sfg==",
+      "path": "websharper.aspnetcore.websocket/5.0.0.119",
+      "hashPath": "websharper.aspnetcore.websocket.5.0.0.119.nupkg.sha512"
     },
     "WebSharper.FSharp/5.0.0.120": {
       "type": "package",

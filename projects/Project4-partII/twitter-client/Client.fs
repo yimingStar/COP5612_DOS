@@ -4,6 +4,7 @@ open WebSharper
 open WebSharper.UI
 open WebSharper.UI.Templating
 open WebSharper.UI.Notation
+open WebSharper.AspNetCore.WebSocket.Client
 
 [<JavaScript>]
 module Templates =
@@ -18,7 +19,7 @@ module Client =
         Templates.MainTemplate.MainForm()
             .OnSend(fun e ->
                 async {
-                    let! res = Server.DoSomething e.Vars.TextToReverse.Value
+                    let! res = CallApi.DoSomething e.Vars.TextToReverse.Value
                     rvReversed := res
                 }
                 |> Async.StartImmediate

@@ -49,6 +49,11 @@
               "version": "[5.0.0.120, )",
               "generatePathProperty": true
             },
+            "WebSharper.AspNetCore.WebSocket": {
+              "target": "Package",
+              "version": "[5.0.0.119, )",
+              "generatePathProperty": true
+            },
             "WebSharper.FSharp": {
               "target": "Package",
               "version": "[5.0.0.120, )",

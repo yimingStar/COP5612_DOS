@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "ZgfAQHsmqcg3quw6WgO57IwH3bJGtB68PvI7XtyC3e8zLPeJsHFdbLtyG4ZXpBH3DXrU0qGgNJetOuAcUSoqJQ==",
+  "dgSpecHash": "oo2jpRVfwIgFXPaEIBK7l0xxGvOCgy95+SSPCEGfASLdLCgcBeFUHem1gxj+H/X3Nk/VlGTVeFSWKWeYW2OzGw==",
   "success": true,
   "projectFilePath": "C:\\COP5612_DOS\\projects\\Project4-partII\\twitter-client\\twitter-client.fsproj",
   "expectedPackageFiles": [
@@ -91,6 +91,7 @@
     "C:\\Users\\ericd\\.nuget\\packages\\system.xml.xpath.xmldocument\\4.3.0\\system.xml.xpath.xmldocument.4.3.0.nupkg.sha512",
     "C:\\Users\\ericd\\.nuget\\packages\\websharper\\5.0.0.120\\websharper.5.0.0.120.nupkg.sha512",
     "C:\\Users\\ericd\\.nuget\\packages\\websharper.aspnetcore\\5.0.0.120\\websharper.aspnetcore.5.0.0.120.nupkg.sha512",
+    "C:\\Users\\ericd\\.nuget\\packages\\websharper.aspnetcore.websocket\\5.0.0.119\\websharper.aspnetcore.websocket.5.0.0.119.nupkg.sha512",
     "C:\\Users\\ericd\\.nuget\\packages\\websharper.fsharp\\5.0.0.120\\websharper.fsharp.5.0.0.120.nupkg.sha512",
     "C:\\Users\\ericd\\.nuget\\packages\\websharper.ui\\5.0.0.120\\websharper.ui.5.0.0.120.nupkg.sha512"
   ],

@@ -4,16 +4,13 @@ open WebSharper
 open WebSharper.UI
 open WebSharper.UI.Templating
 open WebSharper.UI.Notation
-open WebSharper.AspNetCore.WebSocket.Client
 
 [<JavaScript>]
 module Templates =
-
     type MainTemplate = Templating.Template<"Main.html", ClientLoad.FromDocument, ServerLoad.WhenChanged>
 
 [<JavaScript>]
 module Client =
-
     let Main () =
         let rvReversed = Var.Create ""
         Templates.MainTemplate.MainForm()
@@ -26,3 +23,6 @@ module Client =
             )
             .Reversed(rvReversed.View)
             .Doc()
+
+
+        

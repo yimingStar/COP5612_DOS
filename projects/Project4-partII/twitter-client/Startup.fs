@@ -37,5 +37,6 @@ module Program =
 
     [<EntryPoint>]
     let main args =
+        printfn "Twitter Client started."
         BuildWebHost(args).Run()
         0

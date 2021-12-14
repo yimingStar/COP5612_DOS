@@ -90,6 +90,6 @@ let app : WebPart =
 
 [<EntryPoint>]
 let main argv =
-    printfn "Twitter simulation engine started. Now listening..."
+    printfn "Twitter Server engine started. Now listening..."
     startWebServer { defaultConfig with logger = Targets.create Verbose [||] } app
     0 // return an integer exit code

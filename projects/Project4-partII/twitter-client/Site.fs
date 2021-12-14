@@ -36,16 +36,21 @@ module Site =
     open WebSharper.UI.Html
 
     let HomePage ctx =
+        let clientWS = WebSocketModule.Create()
+        WebSocketModule.Connect "1" (clientWS) |> ignore
+
         Templating.Main ctx EndPoint.Home "Twitter Client" [
             h1 [] [text "Send Tweet"]
             div [] [client <@ Client.Main() @>]
         ]
+        
 
     let TweetListPage ctx =
         Templating.Main ctx EndPoint.TweetList "Tweet List" [
             h1 [] [text "Tweet List"]
             p [] [text "This is a template WebSharper client-server application."]
         ]
+    
 
     [<Website>]
     let Main =

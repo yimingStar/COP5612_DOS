@@ -3,8 +3,6 @@ C:\COP5612_DOS\projects\Project4-partII\twitter-client\obj\Debug\net5.0\twitter-
 C:\COP5612_DOS\projects\Project4-partII\twitter-client\obj\Debug\net5.0\twitter-client.AssemblyInfo.fs
 C:\COP5612_DOS\projects\Project4-partII\twitter-client\obj\Debug\net5.0\twitter-client.MvcApplicationPartsAssemblyInfo.fs
 C:\COP5612_DOS\projects\Project4-partII\twitter-client\obj\Debug\net5.0\twitter-client.MvcApplicationPartsAssemblyInfo.cache
-C:\COP5612_DOS\projects\Project4-partII\twitter-client\obj\Debug\net5.0\twitter-client.dll
-C:\COP5612_DOS\projects\Project4-partII\twitter-client\obj\Debug\net5.0\twitter-client.pdb
 C:\COP5612_DOS\projects\Project4-partII\twitter-client\bin\Debug\net5.0\wsconfig.json
 C:\COP5612_DOS\projects\Project4-partII\twitter-client\bin\Debug\net5.0\twitter-client.exe
 C:\COP5612_DOS\projects\Project4-partII\twitter-client\bin\Debug\net5.0\twitter-client.deps.json
@@ -13,6 +11,8 @@ C:\COP5612_DOS\projects\Project4-partII\twitter-client\bin\Debug\net5.0\twitter-
 C:\COP5612_DOS\projects\Project4-partII\twitter-client\bin\Debug\net5.0\twitter-client.dll
 C:\COP5612_DOS\projects\Project4-partII\twitter-client\bin\Debug\net5.0\twitter-client.pdb
 C:\COP5612_DOS\projects\Project4-partII\twitter-client\bin\Debug\net5.0\FSharp.Core.dll
+C:\COP5612_DOS\projects\Project4-partII\twitter-client\bin\Debug\net5.0\FSharp.Data.dll
+C:\COP5612_DOS\projects\Project4-partII\twitter-client\bin\Debug\net5.0\FSharp.Json.dll
 C:\COP5612_DOS\projects\Project4-partII\twitter-client\bin\Debug\net5.0\HtmlAgilityPack.dll
 C:\COP5612_DOS\projects\Project4-partII\twitter-client\bin\Debug\net5.0\System.Configuration.ConfigurationManager.dll
 C:\COP5612_DOS\projects\Project4-partII\twitter-client\bin\Debug\net5.0\System.Security.Cryptography.ProtectedData.dll
@@ -50,4 +50,6 @@ C:\COP5612_DOS\projects\Project4-partII\twitter-client\obj\Debug\net5.0\staticwe
 C:\COP5612_DOS\projects\Project4-partII\twitter-client\obj\Debug\net5.0\staticwebassets\twitter-client.StaticWebAssets.xml
 C:\COP5612_DOS\projects\Project4-partII\twitter-client\obj\Debug\net5.0\scopedcss\bundle\twitter-client.styles.css
 C:\COP5612_DOS\projects\Project4-partII\twitter-client\obj\Debug\net5.0\twitter-client.fsproj.CopyComplete
+C:\COP5612_DOS\projects\Project4-partII\twitter-client\obj\Debug\net5.0\twitter-client.dll
+C:\COP5612_DOS\projects\Project4-partII\twitter-client\obj\Debug\net5.0\twitter-client.pdb
 C:\COP5612_DOS\projects\Project4-partII\twitter-client\obj\Debug\net5.0\twitter-client.genruntimeconfig.cache

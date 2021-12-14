@@ -40,8 +40,11 @@ module Site =
         WebSocketModule.startSocketListener()
         
         Templating.Main ctx EndPoint.Home "Twitter Client" [
+            h1 [] [text "Sign In"]
+            div [] [client <@ Client.SignInComponent() @>]
+            
             h1 [] [text "Send Tweet"]
-            div [] [client <@ Client.Main() @>]
+            div [] [client <@ Client.TweetComponent() @>]
         ]
         
 

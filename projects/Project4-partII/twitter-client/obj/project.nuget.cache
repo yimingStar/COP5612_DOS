@@ -1,10 +1,12 @@
 {
   "version": 2,
-  "dgSpecHash": "oo2jpRVfwIgFXPaEIBK7l0xxGvOCgy95+SSPCEGfASLdLCgcBeFUHem1gxj+H/X3Nk/VlGTVeFSWKWeYW2OzGw==",
+  "dgSpecHash": "uounB4yGxEawsgHGQJTZQ7GKdB0xrxS8jSO68B+M2aqsjEOK+1lpKUd46rWQg7gfm8NqPrdqYu/FhtEyH0HVrw==",
   "success": true,
   "projectFilePath": "C:\\COP5612_DOS\\projects\\Project4-partII\\twitter-client\\twitter-client.fsproj",
   "expectedPackageFiles": [
     "C:\\Users\\ericd\\.nuget\\packages\\fsharp.core\\5.0.0\\fsharp.core.5.0.0.nupkg.sha512",
+    "C:\\Users\\ericd\\.nuget\\packages\\fsharp.data\\4.2.4\\fsharp.data.4.2.4.nupkg.sha512",
+    "C:\\Users\\ericd\\.nuget\\packages\\fsharp.json\\0.4.0\\fsharp.json.0.4.0.nupkg.sha512",
     "C:\\Users\\ericd\\.nuget\\packages\\htmlagilitypack\\1.11.0\\htmlagilitypack.1.11.0.nupkg.sha512",
     "C:\\Users\\ericd\\.nuget\\packages\\microsoft.aspnetcore.authentication.abstractions\\2.0.0\\microsoft.aspnetcore.authentication.abstractions.2.0.0.nupkg.sha512",
     "C:\\Users\\ericd\\.nuget\\packages\\microsoft.aspnetcore.hosting.abstractions\\2.0.0\\microsoft.aspnetcore.hosting.abstractions.2.0.0.nupkg.sha512",

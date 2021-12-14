@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<script language="javascript" type="text/javascript">
+<!-- <script language="javascript" type="text/javascript">
 
     var wsUri = "ws://localhost:8080/websocket";
     var output;
@@ -56,7 +56,7 @@
     }
 
     window.addEventListener("load", init, false);
-</script>
+</script> -->
 
 <html lang="en">
 <head>
@@ -97,14 +97,10 @@
                     <span class="icon-bar"></span>
                     <span class="icon-bar"></span>
                 </button>
-                <a class="navbar-brand" href="#">Your App</a>
+                <a class="navbar-brand" href="#">Twitter Clone</a>
+                <div id="navbar" class="navbar-collapse collapse">
+                    <ul class="nav navbar-nav" ws-hole="MenuBar"></ul>
             </div>
-            <div id="navbar" class="navbar-collapse collapse">
-                <ul class="nav navbar-nav" ws-hole="MenuBar"></ul>
-                <ul class="nav navbar-nav navbar-right">
-                    <li><a href="https://websharper.com">websharper.com</a></li>
-                </ul>
-            </div><!--/.nav-collapse -->
         </div>
     </nav>
     <div class="container">
@@ -114,7 +110,14 @@
                 <button ws-onclick="OnSend">Send</button>
                 <hr />
                 <h4 class="text-muted">The server responded:</h4>
-                <div class="jumbotron"><h1>${Reversed}</h1></div>
+                <div class="jumbotron"><h1>${RESPONSE}</h1></div>
+            </div>
+            <div ws-template="SignInForm">
+                <input ws-var="TextUserId" />
+                <button ws-onclick="OnSend">Login</button>
+                <hr />
+                <h4 class="text-muted">The server responded:</h4>
+                <div class="jumbotron"><h1>${RESPONSE}</h1></div>
             </div>
         </div>
     </div>

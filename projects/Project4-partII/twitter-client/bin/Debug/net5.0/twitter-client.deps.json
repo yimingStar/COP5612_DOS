@@ -34,6 +34,8 @@
       "twitter-client/1.0.0": {
         "dependencies": {
           "FSharp.Core": "5.0.0",
+          "FSharp.Data": "4.2.4",
+          "FSharp.Json": "0.4.0",
           "WebSharper": "5.0.0.120",
           "WebSharper.AspNetCore": "5.0.0.120",
           "WebSharper.AspNetCore.WebSocket": "5.0.0.119",
@@ -380,6 +382,34 @@
         },
         "compile": {
           "lib/netstandard2.0/FSharp.Core.dll": {}
+        }
+      },
+      "FSharp.Data/4.2.4": {
+        "dependencies": {
+          "FSharp.Core": "5.0.0"
+        },
+        "runtime": {
+          "lib/netstandard2.0/FSharp.Data.dll": {
+            "assemblyVersion": "4.2.4.0",
+            "fileVersion": "4.2.4.0"
+          }
+        },
+        "compile": {
+          "lib/netstandard2.0/FSharp.Data.dll": {}
+        }
+      },
+      "FSharp.Json/0.4.0": {
+        "dependencies": {
+          "FSharp.Core": "5.0.0"
+        },
+        "runtime": {
+          "lib/netstandard2.0/FSharp.Json.dll": {
+            "assemblyVersion": "0.4.0.0",
+            "fileVersion": "0.0.0.0"
+          }
+        },
+        "compile": {
+          "lib/netstandard2.0/FSharp.Json.dll": {}
         }
       },
       "HtmlAgilityPack/1.11.0": {
@@ -2856,6 +2886,20 @@
       "sha512": "sha512-iHoYXA0VaSQUONGENB1aVafjDDZDZpwu39MtaRCTrmwFW/cTcK0b2yKNVYneFHJMc3ChtsSoM9lNtJ1dYXkHfA==",
       "path": "fsharp.core/5.0.0",
       "hashPath": "fsharp.core.5.0.0.nupkg.sha512"
+    },
+    "FSharp.Data/4.2.4": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-PiCTnSylPIbFDGWQ9T+KTXxm1iV2oQKh52zMRxal8HGZdsesM/fATNSGIDlgTFslo/6rsX5tB6uCXOGj3YwaAg==",
+      "path": "fsharp.data/4.2.4",
+      "hashPath": "fsharp.data.4.2.4.nupkg.sha512"
+    },
+    "FSharp.Json/0.4.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-3QchEhViQdnvJQzVG7M/CIgdCZhDJw4ZzFKMfLqb/j1cucxcUcXvIMxf6rV0ktFn9mmkmw9WOOuIsrG012vkUg==",
+      "path": "fsharp.json/0.4.0",
+      "hashPath": "fsharp.json.0.4.0.nupkg.sha512"
     },
     "HtmlAgilityPack/1.11.0": {
       "type": "package",

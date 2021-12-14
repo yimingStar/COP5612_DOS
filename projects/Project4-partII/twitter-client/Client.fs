@@ -11,18 +11,34 @@ module Templates =
 
 [<JavaScript>]
 module Client =
-    let Main () =
-        let rvReversed = Var.Create ""
-        Templates.MainTemplate.MainForm()
+    let SignInComponent () =
+        let rvResponse = Var.Create ""
+        Templates.MainTemplate.SignInForm()
             .OnSend(fun e ->
                 async {
-                    let! res = CallApi.DoSomething e.Vars.TextToReverse.Value
-                    rvReversed := res
+                    let! res = CallApi.RequestSignIn e.Vars.TextUserId.Value
+                    rvResponse := res
                 }
                 |> Async.StartImmediate
             )
-            .Reversed(rvReversed.View)
+            .RESPONSE(rvResponse.View)
             .Doc()
+
+    let TweetComponent () =
+        let rvResponse = Var.Create ""
+        Templates.MainTemplate.MainForm()
+            .OnSend(fun e ->
+                async {
+                    let! res = CallApi.SendTweet e.Vars.TextToReverse.Value
+                    rvResponse := res
+                }
+                |> Async.StartImmediate
+            )
+            .RESPONSE(rvResponse.View)
+            .Doc()
+        
+
+
 
 
         

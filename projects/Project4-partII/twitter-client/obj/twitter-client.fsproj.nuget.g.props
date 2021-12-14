@@ -22,5 +22,7 @@
     <PkgWebSharper_FSharp Condition=" '$(PkgWebSharper_FSharp)' == '' ">C:\Users\ericd\.nuget\packages\websharper.fsharp\5.0.0.120</PkgWebSharper_FSharp>
     <PkgWebSharper_AspNetCore Condition=" '$(PkgWebSharper_AspNetCore)' == '' ">C:\Users\ericd\.nuget\packages\websharper.aspnetcore\5.0.0.120</PkgWebSharper_AspNetCore>
     <PkgWebSharper_AspNetCore_WebSocket Condition=" '$(PkgWebSharper_AspNetCore_WebSocket)' == '' ">C:\Users\ericd\.nuget\packages\websharper.aspnetcore.websocket\5.0.0.119</PkgWebSharper_AspNetCore_WebSocket>
+    <PkgFSharp_Json Condition=" '$(PkgFSharp_Json)' == '' ">C:\Users\ericd\.nuget\packages\fsharp.json\0.4.0</PkgFSharp_Json>
+    <PkgFSharp_Data Condition=" '$(PkgFSharp_Data)' == '' ">C:\Users\ericd\.nuget\packages\fsharp.data\4.2.4</PkgFSharp_Data>
   </PropertyGroup>
 </Project>

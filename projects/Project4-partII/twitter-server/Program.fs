@@ -39,6 +39,7 @@ let ws (webSocket : WebSocket) (context: HttpContext) =
         // the message can be converted to a string
         let str = UTF8.toString data
         let response = sprintf "response to %s" str
+        printfn "%s" response
 
         // the response needs to be converted to a ByteSegment
         let byteResponse =

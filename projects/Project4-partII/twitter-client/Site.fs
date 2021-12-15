@@ -34,19 +34,23 @@ module Templating =
 
 module Site =
     open WebSharper.UI.Html
+    open WebSharper.JavaScript
+
     let HomePage ctx =
         WebSocketModule.Create()
         WebSocketModule.Connect "1" |> ignore
         WebSocketModule.startSocketListener()
-        
+
         Templating.Main ctx EndPoint.Home "Twitter Client" [
             h1 [] [text "Sign In"]
             div [] [client <@ Client.SignInComponent() @>]
             
             h1 [] [text "Send Tweet"]
             div [] [client <@ Client.TweetComponent() @>]
+
+            h1 [] [text "Test Area"]
+            div [] [client <@ Client.ResponseComponet() @>]
         ]
-        
 
     let TweetListPage ctx =
         Templating.Main ctx EndPoint.TweetList "Tweet List" [

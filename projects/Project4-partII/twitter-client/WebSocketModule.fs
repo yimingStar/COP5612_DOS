@@ -22,7 +22,7 @@ module WebSocketModule =
 
     let Connect (uid: string) =
         printfn "check websocketstate %A" clientWS.State 
-        if clientWS <> null && clientWS.State <> WebSocketState.Open then 
+        if clientWS <> null && clientWS.State = WebSocketState.None then 
             let tk = Async.DefaultCancellationToken
             printfn "websocket connect to server"
             Async.AwaitTask(clientWS.ConnectAsync(Uri(wsUri), tk)) |> ignore

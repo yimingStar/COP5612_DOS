@@ -96,6 +96,7 @@ let serverWSActionDecoder(msg: string, webSocket: WebSocket) =
     let mutable response = ""
     try
         let actionObj = Json.deserializeEx<MessageType> JsonConfig msg
+        printfn "Receive Message %A" actionObj
         match actionObj.action with
         | "REGISTER" ->
             let data = Json.deserializeEx<REGISTERDATA> JsonConfig actionObj.data
@@ -143,8 +144,24 @@ let serverWSActionDecoder(msg: string, webSocket: WebSocket) =
                     action = "KEY_DATA"
                     data = rsaPublicKey
                 }
-
                 response <- Json.serializeEx JsonConfig keyMsg
+                sendByWebSocket(response, webSocket) |> ignore
+
+                let getUserJson = JsonValue.Parse(usersDataStr)
+                
+                let respTweet: MessageType = {
+                    action = "OWN_TWEET_DATA"
+                    data = getUserTweets(getUserJson)
+                }
+
+                response <- Json.serializeEx JsonConfig respTweet
+                sendByWebSocket(response, webSocket) |> ignore
+
+                let respTweet: MessageType = {
+                    action = "BROWSE_TWEET_DATA"
+                    data = getBrowseTweets()
+                }
+                response <- Json.serializeEx JsonConfig respTweet
                 sendByWebSocket(response, webSocket) |> ignore
 
         | "CONNECT" ->
@@ -225,7 +242,7 @@ let serverWSActionDecoder(msg: string, webSocket: WebSocket) =
                     response <- Json.serializeEx JsonConfig errResp
                     sendByWebSocket(response, webSocket) |> ignore
             else
-                printfn "Receive %s request to userId %s" actionObj.action data.targeUserId
+                printfn "Receive %s request to sucribe to userId %s" actionObj.action data.targeUserId
 
                 let mutable usersDataStr = ""
                 let mutable targetDataStr = ""

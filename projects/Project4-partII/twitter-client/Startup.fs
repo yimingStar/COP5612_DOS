@@ -40,6 +40,6 @@ module Program =
     [<EntryPoint>]
     let main args =
         printfn "Twitter Client started."
-        let port = if args.Length > 1 then args.[1] else "5000"
+        let port = if args.Length >= 1 then args.[0] else "5000"
         BuildWebHost(args, port).Run()
         0

@@ -88,21 +88,61 @@ let sendByWebSocket(msg: string, webSocket: WebSocket) =
 
 let serverWSActionDecoder(msg: string, webSocket: WebSocket) =
     let mutable response = ""
-    let mutable errorCode = 0
-    let mutable hasError = false
-
     try
         let actionObj = Json.deserializeEx<MessageType> JsonConfig msg
         match actionObj.action with
+        | "REGISTER" ->
+            let data = Json.deserializeEx<REGISTERDATA> JsonConfig actionObj.data
+            if data.account = "" then
+                printfn "Invalid Action %s, request to resend" actionObj.action
+                let errResp: ErrorType = {
+                    action = "ERROR"
+                    code = 403
+                    data = "Missing account, invalid registration"
+                }
+                response <- Json.serializeEx JsonConfig errResp
+                sendByWebSocket(response, webSocket) |> ignore
+            else
+                printfn "Receive %s request with account %s, create user object and return" actionObj.action data.account
+                
+                // Create UseId
+                let newNumUsers = settingObj.numUsers + 1
+                // let newUserId = sprintf "%s%d" userIdPrefix (newNumUsers)
+                let newUserId = data.account
+
+                printfn "check new userId: %s" newUserId
+                // Create User Object and Store
+                let newUserObj: UserObject = {
+                    userId = newUserId
+                    account = data.account
+                    subscribedList = []
+                    subscribers = []
+                    tweets = []
+                }
+
+                let usersDataStr = Json.serializeEx JsonConfig newUserObj
+                // printfn "check new newUserObj: %A" newUserObj
+                userDataMap <- userDataMap.Add(newUserId, usersDataStr)
+                settingObj.numUsers <- newNumUsers
+
+                // printfn "check new userDataMap: %A" userDataMap
+                let mutable resp: MessageType = {
+                    action = "USER_DATA"
+                    data = usersDataStr
+                }
+                response <- Json.serializeEx JsonConfig resp
+                sendByWebSocket(response, webSocket) |> ignore
+
         | "CONNECT" ->
             let data = Json.deserializeEx<CONNECTDATA> JsonConfig actionObj.data
             if data.userId = "" then
                 printfn "Receive %s request without userId, request to registered" actionObj.action
-                let resp: MessageType = {
-                    action = "REQUIRE_USERID"
-                    data = ""
+                let errResp: ErrorType = {
+                    action = "ERROR"
+                    code = 401
+                    data = "Request without userId"
                 }
-                response <- Json.serializeEx JsonConfig resp
+                response <- Json.serializeEx JsonConfig errResp
                 sendByWebSocket(response, webSocket) |> ignore
             else
                 let mutable resp: MessageType = {
@@ -149,8 +189,13 @@ let serverWSActionDecoder(msg: string, webSocket: WebSocket) =
         | _ -> printfn "[Invalid Action] server no action match %s" msg
     with ex ->
         printfn "exeption decoding client actions, ex: %A" ex
-        errorCode <- 403
-        hasError <- true
+        let errResp: ErrorType = {
+            action = "ERROR"
+            code = 403
+            data = ""
+        }
+        response <- Json.serializeEx JsonConfig errResp
+        sendByWebSocket(response, webSocket) |> ignore
 
 let ws (webSocket : WebSocket) (context: HttpContext) =
     

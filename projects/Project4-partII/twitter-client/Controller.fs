@@ -8,12 +8,36 @@ open ClientTypes
 
 module CallApi =
     let JsonConfig = JsonConfig.create(allowUntyped = true)
-    [<Rpc>]
-    let RequestSignIn input =
-        let inputUserId = input
 
+    [<Rpc>]
+    let RequestRegister userAccount =
+        let inputData: REGISTERDATA = {
+            account = userAccount
+        }
+
+        let sendRequest: MessageType = {
+            action = "REGISTER"
+            data = Json.serializeEx JsonConfig inputData
+        }
+ 
+        WebSocketModule.Send(Json.serializeEx JsonConfig sendRequest) |> ignore
+
+        async {
+            do! Async.Sleep 500
+            let mutable returnStr = ""
+            printfn "check if error exist %A" MessageHandler.errFlag
+            if MessageHandler.errFlag = true then
+                MessageHandler.clearErrorFlag() 
+                returnStr <- MessageHandler.errorMsgObj.ToString()
+            else
+                returnStr <- MessageHandler.myUserObj.ToString()
+            return returnStr
+        }
+
+    [<Rpc>]
+    let RequestSignIn userId =
         let inputData: ClientTypes.CONNECTDATA = {
-            userId = inputUserId
+            userId = userId
         }
 
         let sendRequest: ClientTypes.MessageType = {
@@ -22,14 +46,24 @@ module CallApi =
         }
  
         WebSocketModule.Send(Json.serializeEx JsonConfig sendRequest) |> ignore
+
         async {
-            return WebSocketModule.GetResp()
+            do! Async.Sleep 500
+            let mutable returnStr = ""
+            printfn "check if error exist %A" MessageHandler.errFlag
+            if MessageHandler.errFlag = true then
+                MessageHandler.clearErrorFlag() 
+                returnStr <- MessageHandler.errorMsgObj.ToString()
+            else
+                returnStr <- MessageHandler.myUserObj.ToString()
+            return returnStr
         }
     
     [<Rpc>]
     let SendTweet input =
         let R (s: string) = System.String(Array.rev(s.ToCharArray()))
-        WebSocketModule.Send(R input) |> ignore
+        WebSocketModule.Send(input) |> ignore
         async {
             return R input
         }
+    

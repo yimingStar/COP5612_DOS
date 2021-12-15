@@ -46,6 +46,12 @@ module ClientTypes =
         data: string
     }
 
+    type ErrorType = {
+        action: string
+        code: int
+        data: string
+    }
+    
     // using object to simulate getting data from database
     type UserObject = {
         userId: string

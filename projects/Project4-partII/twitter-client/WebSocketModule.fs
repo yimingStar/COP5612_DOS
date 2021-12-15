@@ -10,15 +10,11 @@ module WebSocketModule =
     let serverURI = "localhost:8080"
     let wsUri = sprintf "ws://%s/websocket" serverURI
     let mutable clientWS = null
-    let mutable responseStr = ""
 
     let Create() = 
         printfn "create client websocket"
         if clientWS = null then
             clientWS <- new ClientWebSocket()
-    
-    let GetResp() = 
-        responseStr
 
     let Connect (uid: string) =
         printfn "check websocketstate %A" clientWS.State 
@@ -33,6 +29,7 @@ module WebSocketModule =
         let tk = Async.DefaultCancellationToken
         Async.AwaitTask(clientWS.SendAsync(ArraySegment(req), WebSocketMessageType.Text, true, tk))
     
+    
     let startSocketListener() = 
         let loop = true
         async {
@@ -46,10 +43,8 @@ module WebSocketModule =
                     let actionStr = Encoding.UTF8.GetString(buf, 0, r.Count)
                     if actionStr <> "" then
                         clientWSActionDecoder(actionStr)
-                        responseStr <- actionStr
                     else
                         printfn "Received empty response from server"
-                        responseStr <- "Empty Response"
                 with ex -> ()
                     // printfn "exeption receiving in websocket" ex
         } |> Async.Start

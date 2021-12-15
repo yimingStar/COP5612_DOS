@@ -4923,11 +4923,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "c:\\COP5612_DOS\\projects\\Project4-partII\\twitter-client\\twitter-client.fsproj",
+      "projectUniqueName": "C:\\COP5612_DOS\\projects\\Project4-partII\\twitter-client\\twitter-client.fsproj",
       "projectName": "twitter-client",
-      "projectPath": "c:\\COP5612_DOS\\projects\\Project4-partII\\twitter-client\\twitter-client.fsproj",
+      "projectPath": "C:\\COP5612_DOS\\projects\\Project4-partII\\twitter-client\\twitter-client.fsproj",
       "packagesPath": "C:\\Users\\ericd\\.nuget\\packages\\",
-      "outputPath": "c:\\COP5612_DOS\\projects\\Project4-partII\\twitter-client\\obj\\",
+      "outputPath": "C:\\COP5612_DOS\\projects\\Project4-partII\\twitter-client\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\ericd\\AppData\\Roaming\\NuGet\\NuGet.Config"

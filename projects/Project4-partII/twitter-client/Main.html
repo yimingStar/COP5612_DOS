@@ -105,9 +105,19 @@
     </nav>
     <div class="container">
         <div ws-replace="Body">
+            <div ws-template="RegisterForm">
+                <input ws-var="Account" />
+                <button ws-onclick="OnSend">SignUp</button>
+                <hr />
+                <h4 class="text-muted">Server Response:</h4>
+                <div class="jumbotron"><h3>${RESPONSE}</h3></div>
+            </div>
             <div ws-template="SignInForm">
                 <input ws-var="TextUserId" />
                 <button ws-onclick="OnSend">Login</button>
+                <hr />
+                <h4 class="text-muted">Server Response:</h4>
+                <div class="jumbotron"><h3>${RESPONSE}</h3></div>
             </div>
             <div ws-template="MainForm">
                 <textarea   ws-var="TextToReverse" rows = "5" cols = "60">
@@ -115,7 +125,7 @@
                 </textarea>
                 <button ws-onclick="OnSend">Send</button>
                 <hr />
-                <h4 class="text-muted">The server responded:</h4>
+                <h4 class="text-muted">Server Response:</h4>
                 <div class="jumbotron"><h3>${RESPONSE}</h3></div>
             </div>
         </div>

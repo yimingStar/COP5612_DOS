@@ -55,7 +55,7 @@
    $1:R
   }),_this))),(p=Handler.CompleteHoles(b.k,b.h,[]),(i=new TemplateInstance.New(p[1],_twitterclient_Templates.subscribedlist(p[0])),b.i=i,i))).get_Doc();
  };
- Client.SubscribeComponent$59$20=function(rvResponse)
+ Client.SubscribeComponent$63$20=function(rvResponse)
  {
   return function(e)
   {
@@ -94,7 +94,7 @@
    $1:R
   }),_this))),(p=Handler.CompleteHoles(b.k,b.h,[["textsubscribeid",0]]),(i=new TemplateInstance.New(p[1],_twitterclient_Templates.subscribeform(p[0])),b.i=i,i))).get_Doc();
  };
- Client.TweetComponent$46$20=function(rvResponse)
+ Client.TweetComponent$50$20=function(rvResponse)
  {
   return function(e)
   {
@@ -133,7 +133,7 @@
    $1:R
   }),_this))),(p=Handler.CompleteHoles(b.k,b.h,[["texttweet",0]]),(i=new TemplateInstance.New(p[1],_twitterclient_Templates.mainform(p[0])),b.i=i,i))).get_Doc();
  };
- Client.SignInComponent$33$20=function(rvResponse)
+ Client.SignInComponent$37$20=function(rvResponse)
  {
   return function(e)
   {
@@ -172,7 +172,7 @@
    $1:R
   }),_this))),(p=Handler.CompleteHoles(b.k,b.h,[["textuserid",0]]),(i=new TemplateInstance.New(p[1],_twitterclient_Templates.signinform(p[0])),b.i=i,i))).get_Doc();
  };
- Client.SignUpComponent$20$20=function(rvResponse)
+ Client.SignUpComponent$24$20=function(rvResponse)
  {
   return function(e)
   {
@@ -210,6 +210,15 @@
    $0:"response",
    $1:R
   }),_this))),(p=Handler.CompleteHoles(b.k,b.h,[["account",0]]),(i=new TemplateInstance.New(p[1],_twitterclient_Templates.registerform(p[0])),b.i=i,i))).get_Doc();
+ };
+ Client.UserInfoComponent=function(userData)
+ {
+  var b,U,_this,p,i;
+  return(b=(U=Var$1.Create$1(userData).get_View(),(_this=new ProviderBuilder.New$1(),(_this.h.push({
+   $:2,
+   $0:"userinfo",
+   $1:U
+  }),_this))),(p=Handler.CompleteHoles(b.k,b.h,[]),(i=new TemplateInstance.New(p[1],_twitterclient_Templates.userdatainfo(p[0])),b.i=i,i))).get_Doc();
  };
  _twitterclient_Templates.owntweetlist=function(h)
  {
@@ -265,6 +274,14 @@
   return h?Templates.NamedTemplate("main",{
    $:1,
    $0:"registerform"
+  },h):void 0;
+ };
+ _twitterclient_Templates.userdatainfo=function(h)
+ {
+  Templates.LoadLocalTemplates("main");
+  return h?Templates.NamedTemplate("main",{
+   $:1,
+   $0:"userdatainfo"
   },h):void 0;
  };
  _twitterclient_Templates.browsetweetlist=function(h)

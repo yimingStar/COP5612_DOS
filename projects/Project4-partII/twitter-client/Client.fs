@@ -14,6 +14,10 @@ module Templates =
 
 [<JavaScript>]
 module Client =
+    let UserInfoComponent (userData) =
+        let rvResponse = Var.Create userData
+        Templates.MainTemplate.UserDataInfo().UserInfo(rvResponse.View).Doc()
+
     let SignUpComponent () =
         let rvResponse = Var.Create ""
         Templates.MainTemplate.RegisterForm()

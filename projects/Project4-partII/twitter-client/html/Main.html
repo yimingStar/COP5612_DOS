@@ -27,9 +27,16 @@
             margin: 20px 0;
         }
 
-        .tweetList {
-            height: 500px;
-            width: 300px;
+        .user-data-board {
+            position: absolute;
+            top: 150px;
+            left: 30px;
+            height: 300px;
+            width: 250px;
+            border-top: solid 6px #d0d0d2;
+            border-right: solid 6px #d0d0d2;
+            border-left: solid 6px #d0d0d2;
+            border-bottom: solid 6px #d0d0d2;
         }
 
     </style>
@@ -51,6 +58,9 @@
         </div>
     </nav>
     <div class="container">
+        <div ws-template="UserDataInfo" class="user-data-board">
+            <h3>${UserInfo}</h3>
+        </div>
         <div ws-replace="Body">
             <div ws-template="RegisterForm">
                 <input ws-var="Account" />

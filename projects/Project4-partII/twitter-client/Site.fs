@@ -42,8 +42,11 @@ module Site =
         WebSocketModule.Create()
         WebSocketModule.Connect "1" |> ignore
         WebSocketModule.startSocketListener()
+        let userData = MessageHandler.myUserObj.ToString()
 
         Templating.Main ctx EndPoint.Home "Twitter Client" [
+            div [] [client <@ Client.UserInfoComponent(userData) @>]
+
             h1 [] [text "Sign Up"]
             div [] [client <@ Client.SignUpComponent() @>]
 

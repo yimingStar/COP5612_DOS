@@ -3,23 +3,29 @@ namespace twitter_client
 open System
 open System.Net.WebSockets
 open System.Text
+open MessageHandler
 
 module WebSocketModule = 
 
     let serverURI = "localhost:8080"
     let wsUri = sprintf "ws://%s/websocket" serverURI
-    let clientWS = new ClientWebSocket()
+    let mutable clientWS = null
+    let mutable responseStr = ""
 
-    // let Create() = 
-    //     printfn "create client websocket"
-    //     let newWS = new ClientWebSocket()
-    //     newWS
+    let Create() = 
+        printfn "create client websocket"
+        if clientWS = null then
+            clientWS <- new ClientWebSocket()
+    
+    let GetResp() = 
+        responseStr
 
-    let Connect (uid: string) = 
-        let tk = Async.DefaultCancellationToken
-        printfn "websocket connect to server"
-        // Async.AwaitTask(ws.ConnectAsync(Uri(sprintf "%s/%s" serverURI uid), tk))
-        Async.AwaitTask(clientWS.ConnectAsync(Uri(wsUri), tk))
+    let Connect (uid: string) =
+        printfn "check websocketstate %A" clientWS.State 
+        if clientWS <> null && clientWS.State <> WebSocketState.Open then 
+            let tk = Async.DefaultCancellationToken
+            printfn "websocket connect to server"
+            Async.AwaitTask(clientWS.ConnectAsync(Uri(wsUri), tk)) |> ignore
     
     let Send (msg: string) =
         printfn "websocket send msg %s to server" msg
@@ -37,12 +43,14 @@ module WebSocketModule =
                     let tk = Async.DefaultCancellationToken
                     let r =  Async.AwaitTask(clientWS.ReceiveAsync(buffer, tk)) |> Async.RunSynchronously
                     if not r.EndOfMessage then failwith "too lazy to receive more!"
-                    let resp = Encoding.UTF8.GetString(buf, 0, r.Count)
-                    if resp <> "" then
-                        printfn "Received from server: %s" resp
+                    let actionStr = Encoding.UTF8.GetString(buf, 0, r.Count)
+                    if actionStr <> "" then
+                        clientWSActionDecoder(actionStr)
+                        responseStr <- actionStr
                     else
                         printfn "Received empty response from server"
-                with ex ->
-                    printfn "exeption receiving in websocket, ex: %A" ex
+                        responseStr <- "Empty Response"
+                with ex -> ()
+                    // printfn "exeption receiving in websocket" ex
         } |> Async.Start
 

@@ -4,13 +4,13 @@ open WebSharper
 open FSharp.Data
 open FSharp.Json
 open FSharp.Data.JsonExtensions
+open ClientTypes
 
 module CallApi =
     let JsonConfig = JsonConfig.create(allowUntyped = true)
     [<Rpc>]
     let RequestSignIn input =
-        let R (s: string) = System.String(Array.rev(s.ToCharArray()))
-        let inputUserId = R input
+        let inputUserId = input
 
         let inputData: ClientTypes.CONNECTDATA = {
             userId = inputUserId
@@ -23,7 +23,7 @@ module CallApi =
  
         WebSocketModule.Send(Json.serializeEx JsonConfig sendRequest) |> ignore
         async {
-            return R input
+            return WebSocketModule.GetResp()
         }
     
     [<Rpc>]

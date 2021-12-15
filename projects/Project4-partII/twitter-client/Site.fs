@@ -35,7 +35,7 @@ module Templating =
 module Site =
     open WebSharper.UI.Html
     let HomePage ctx =
-        // let clientWS = WebSocketModule.Create()
+        WebSocketModule.Create()
         WebSocketModule.Connect "1" |> ignore
         WebSocketModule.startSocketListener()
         

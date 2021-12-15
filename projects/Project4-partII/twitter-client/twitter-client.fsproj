@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <Compile Include="ClientTypes.fs" />
+    <Compile Include="MessageHandler.fs" />
     <Compile Include="WebSocketModule.fs" />
     <Compile Include="Controller.fs" />
     <Compile Include="Client.fs" />

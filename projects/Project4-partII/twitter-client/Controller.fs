@@ -80,3 +80,29 @@ module CallApi =
                 returnStr <- MessageHandler.myUserObj.ToString()
             return returnStr
         }
+    
+        
+    [<Rpc>]
+    let Subscribe targetUserId =
+        let inputData: SUBSCRIBEDATA = {
+            targeUserId = targetUserId
+            userId = MessageHandler.myUserObj.userId
+        }
+
+        let sendRequest: MessageType = {
+            action = "SUBSCRIBE"
+            data = Json.serializeEx JsonConfig inputData
+        }
+
+        WebSocketModule.Send(Json.serializeEx JsonConfig sendRequest) |> ignore
+        
+        async {
+            do! Async.Sleep 500
+            let mutable returnStr = ""
+            if MessageHandler.errFlag = true then
+                MessageHandler.clearErrorFlag() 
+                returnStr <- MessageHandler.errorMsgObj.ToString()
+            else
+                returnStr <- MessageHandler.myUserObj.ToString()
+            return returnStr
+        }

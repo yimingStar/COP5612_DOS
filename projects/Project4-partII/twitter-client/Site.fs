@@ -8,6 +8,7 @@ open WebSharper.UI.Server
 type EndPoint =
     | [<EndPoint "/">] Home
     | [<EndPoint "/tweet-list">] TweetList
+    | [<EndPoint "/subscribe-list">] SubscribeList
 
 module Templating =
     open WebSharper.UI.Html
@@ -21,6 +22,7 @@ module Templating =
         [
             "Home" => EndPoint.Home
             "TweetList" => EndPoint.TweetList
+            "SubscribeList" => EndPoint.SubscribeList
         ]
 
     let Main ctx action (title: string) (body: Doc list) =
@@ -47,7 +49,10 @@ module Site =
 
             h1 [] [text "Sign In"]
             div [] [client <@ Client.SignInComponent() @>]
-            
+
+            h1 [] [text "SubScribe"]
+            div [] [client <@ Client.SubscribeComponent() @>]
+
             h1 [] [text "Send Tweet"]
             div [] [client <@ Client.TweetComponent() @>]
         ]
@@ -63,6 +68,18 @@ module Site =
             div [] [client <@ Client.BrowseTweetListComponent(showBrowseTweets) @>]
         ]
     
+    let SubscribeListPage ctx =
+        let showSubscribers = MessageHandler.myUserObj.subscribers.ToString()
+        let showSubscribed = MessageHandler.myUserObj.subscribedList.ToString()
+
+        Templating.Main ctx EndPoint.SubscribeList "Subscribe List" [
+            h1 [] [text "Subscriber List"]
+            div [] [client <@ Client.SubscriberListComponent(showSubscribers) @>]
+
+            h1 [] [text "Subscribed List"]
+            div [] [client <@ Client.SubscribedListComponent(showSubscribed) @>]
+        ]
+    
 
     [<Website>]
     let Main =
@@ -70,4 +87,5 @@ module Site =
             match endpoint with
             | EndPoint.Home -> HomePage ctx
             | EndPoint.TweetList -> TweetListPage ctx
+            | EndPoint.SubscribeList -> SubscribeListPage ctx
         )

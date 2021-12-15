@@ -67,10 +67,17 @@
                 <div class="jumbotron"><h3>${RESPONSE}</h3></div>
             </div>
             <div ws-template="MainForm">
-                <textarea   ws-var="TextToReverse" rows = "5" cols = "60">
+                <textarea   ws-var="TextTweet" rows = "5" cols = "60">
                     Enter details here...
                 </textarea>
                 <button ws-onclick="OnSend">Send</button>
+                <hr />
+                <h4 class="text-muted">Server Response:</h4>
+                <div class="jumbotron"><h3>${RESPONSE}</h3></div>
+            </div>
+            <div ws-template="SubScribeForm">
+                <input ws-var="TextSubscribeId" />
+                <button ws-onclick="OnSend">Subscribe</button>
                 <hr />
                 <h4 class="text-muted">Server Response:</h4>
                 <div class="jumbotron"><h3>${RESPONSE}</h3></div>
@@ -82,7 +89,15 @@
             <div ws-template="BrowseTweetList">
                 <h4 class="text-muted">Browse List:</h4>
                 <div class="jumbotron"><h3>${RESPONSE}</h3></div>
-            </div>  
+            </div>
+            <div ws-template="SubscriberList">
+                <h4 class="text-muted">Subscriber List:</h4>
+                <div class="jumbotron"><h3>${RESPONSE}</h3></div>
+            </div>
+            <div ws-template="SubscribedList">
+                <h4 class="text-muted">Subscribed List:</h4>
+                <div class="jumbotron"><h3>${RESPONSE}</h3></div>
+            </div>
         </div>
     </div>
     <footer class="footer">

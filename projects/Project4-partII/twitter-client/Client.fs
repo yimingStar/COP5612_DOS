@@ -11,7 +11,7 @@ open WebSharper.JavaScript
 [<JavaScript>]
 module Templates =
     type MainTemplate = Templating.Template<"./html/Main.html", ClientLoad.FromDocument, ServerLoad.WhenChanged>
-    
+
 [<JavaScript>]
 module Client =
     let SignUpComponent () =
@@ -45,14 +45,43 @@ module Client =
         Templates.MainTemplate.MainForm()
             .OnSend(fun e ->
                 async {
-                    let! res = CallApi.SendTweet e.Vars.TextToReverse.Value
+                    let! res = CallApi.SendTweet e.Vars.TextTweet.Value
                     rvResponse := res
                 }
                 |> Async.StartImmediate
             )
             .RESPONSE(rvResponse.View)
             .Doc()
-    
+
+    let SubscribeComponent () =
+        let rvResponse = Var.Create ""
+        Templates.MainTemplate.SubScribeForm()
+            .OnSend(fun e ->
+                async {
+                    let! res = CallApi.Subscribe e.Vars.TextSubscribeId.Value
+                    rvResponse := res
+                }
+                |> Async.StartImmediate
+            )
+            .RESPONSE(rvResponse.View)
+            .Doc()
+
+    let SubscribedListComponent (inputList) =
+        let rvResponse = Var.Create inputList
+        
+        Templates.MainTemplate.SubscribedList()
+            .RESPONSE(rvResponse.View)
+            .Doc()
+
+
+    let SubscriberListComponent (inputList) =
+        let rvResponse = Var.Create inputList
+        
+        Templates.MainTemplate.SubscriberList()
+            .RESPONSE(rvResponse.View)
+            .Doc()
+
+
     let OwnTweetListComponent (inputList) =
         let rvResponse = Var.Create inputList
         

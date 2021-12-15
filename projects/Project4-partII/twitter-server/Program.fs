@@ -183,69 +183,131 @@ let serverWSActionDecoder(msg: string, webSocket: WebSocket) =
                 response <- Json.serializeEx JsonConfig respTweet
                 sendByWebSocket(response, webSocket) |> ignore
 
+         | "SUBSCRIBE" -> 
+            let data = Json.deserializeEx<SUBSCRIBEDATA> JsonConfig actionObj.data
+            if data.targeUserId = "" || data.userId = "" then
+                if data.userId = "" then
+                    printfn "Receive %s request without userId, request to registered" actionObj.action
+                    let errResp: ErrorType = {
+                        action = "ERROR"
+                        code = 401
+                        data = "Request without userId"
+                    }
+                    response <- Json.serializeEx JsonConfig errResp
+                    sendByWebSocket(response, webSocket) |> ignore
+                else if data.targeUserId = "" then 
+                    printfn "Receive %s request without targeUserId, bad request" actionObj.action
+                    let errResp: ErrorType = {
+                        action = "ERROR"
+                        code = 403
+                        data = "Missing subscribe userid"
+                    }
+                    response <- Json.serializeEx JsonConfig errResp
+                    sendByWebSocket(response, webSocket) |> ignore
+            else
+                printfn "Receive %s request to userId %s" actionObj.action data.targeUserId
+
+                let mutable usersDataStr = ""
+                let mutable targetDataStr = ""
+                try
+                    // update user subscribedList and update target user subscribers
+                    usersDataStr <- userDataMap |> Map.find data.userId
+                    let userObj = Json.deserializeEx<UserObject> JsonConfig (usersDataStr) 
+                    userObj.subscribedList <- userObj.subscribedList @ [data.targeUserId]
+                    
+                    targetDataStr <- userDataMap |> Map.find data.targeUserId 
+                    let mutable targetUserObj = Json.deserializeEx<UserObject> JsonConfig (targetDataStr) 
+                    targetUserObj.subscribers <- targetUserObj.subscribers @ [data.userId]
+
+
+                    targetDataStr <- Json.serializeEx JsonConfig targetUserObj
+                    usersDataStr <- Json.serializeEx JsonConfig userObj
+
+                    userDataMap <- userDataMap.Add(data.targeUserId, targetDataStr)
+                    userDataMap <- userDataMap.Add(data.userId, usersDataStr)
+
+                    usersDataStr <- Json.serializeEx JsonConfig userObj
+                with :? KeyNotFoundException as ex -> printfn "Exception! %A " (ex.Message) 
+                
+                let mutable resp: MessageType = {
+                    action = "USER_DATA"
+                    data = usersDataStr
+                }
+                
+                response <- Json.serializeEx JsonConfig resp
+                sendByWebSocket(response, webSocket) |> ignore
+
         | "TWEET" -> 
             // 1. Create new Tweet obj, update tweet list
             // 2. Update user tweet list
             // 3. Broadcast to all suscribers
-
+            
             let data = Json.deserializeEx<TWEET_RAW_DATA> JsonConfig actionObj.data
+            if data.userId = "" then
+                printfn "Receive %s request without userId, request to registered" actionObj.action
+                let errResp: ErrorType = {
+                    action = "ERROR"
+                    code = 401
+                    data = "Request without userId"
+                }
+                response <- Json.serializeEx JsonConfig errResp
+                sendByWebSocket(response, webSocket) |> ignore
+            else
+                // 1. Create new Tweet obj, update tweet list
+                let newNumTweets = settingObj.numTweets + 1 
+                let newTweetId = sprintf "%s%d" tweetIdPrefix newNumTweets
 
-            // 1. Create new Tweet obj, update tweet list
-            let newNumTweets = settingObj.numTweets + 1 
-            let newTweetId = sprintf "%s%d" tweetIdPrefix newNumTweets
+                let newTweetObj: TweetObject = {
+                    userId = data.userId
+                    tweetId = newTweetId
+                    content = data.content
+                    hashTag = []
+                    mention = []
+                }
 
-            let newTweetObj: TweetObject = {
-                userId = data.userId
-                tweetId = newTweetId
-                content = data.content
-                hashTag = []
-                mention = []
-            }
-            
-            printfn ""
-            let tweetDataStr = Json.serializeEx JsonConfig newTweetObj 
-            tweetDataMap <- tweetDataMap.Add(newTweetId, tweetDataStr)
-            settingObj.numTweets <- newNumTweets 
-            
-            let mutable usersDataStr = ""
-            try
-                // 2. Update user tweet list
-                usersDataStr <- userDataMap |> Map.find data.userId
-                let userObj = Json.deserializeEx<UserObject> JsonConfig (usersDataStr) 
-                userObj.tweets <- userObj.tweets @ [newTweetId]
-                usersDataStr <- Json.serializeEx JsonConfig userObj
+                let tweetDataStr = Json.serializeEx JsonConfig newTweetObj 
+                tweetDataMap <- tweetDataMap.Add(newTweetId, tweetDataStr)
+                settingObj.numTweets <- newNumTweets 
                 
-                // 3. Broadcast to subscribers
-                for subsribersId in userObj.subscribers do
-                    printfn "%s" subsribersId
-                    if userConnectedMap.ContainsKey(subsribersId) then
-                        let subscriberWS = userConnectedMap.[subsribersId]
+                let mutable usersDataStr = ""
+                try
+                    // 2. Update user tweet list
+                    usersDataStr <- userDataMap |> Map.find data.userId
+                    let userObj = Json.deserializeEx<UserObject> JsonConfig (usersDataStr) 
+                    userObj.tweets <- userObj.tweets @ [newTweetId]
+                    usersDataStr <- Json.serializeEx JsonConfig userObj
+                    
+                    // 3. Broadcast to subscribers
+                    for subsribersId in userObj.subscribers do
+                        printfn "%s" subsribersId
+                        if userConnectedMap.ContainsKey(subsribersId) then
+                            let subscriberWS = userConnectedMap.[subsribersId]
 
-                        let mutable tweetMsg: MessageType = {
-                            action = "NEW_TWEET_DATA"
-                            data = tweetDataStr
-                        }
+                            let mutable tweetMsg: MessageType = {
+                                action = "NEW_TWEET_DATA"
+                                data = tweetDataStr
+                            }
 
-                        response <- Json.serializeEx JsonConfig tweetMsg
-                        sendByWebSocket(response, subscriberWS) |> ignore
+                            response <- Json.serializeEx JsonConfig tweetMsg
+                            sendByWebSocket(response, subscriberWS) |> ignore
 
-            with :? KeyNotFoundException as ex -> printfn "Exception! %A " (ex.Message) 
+                with :? KeyNotFoundException as ex -> printfn "Exception! %A " (ex.Message) 
 
-            let mutable resp: MessageType = {
-                action = "USER_DATA"
-                data = usersDataStr
-            }
+                let mutable resp: MessageType = {
+                    action = "USER_DATA"
+                    data = usersDataStr
+                }
 
-            response <- Json.serializeEx JsonConfig resp
-            sendByWebSocket(response, webSocket) |> ignore
+                response <- Json.serializeEx JsonConfig resp
+                sendByWebSocket(response, webSocket) |> ignore
 
-            let getUserJson = JsonValue.Parse(usersDataStr)   
-            let respTweet: MessageType = {
-                action = "OWN_TWEET_DATA"
-                data = getUserTweets(getUserJson)
-            }
-            response <- Json.serializeEx JsonConfig respTweet
-            sendByWebSocket(response, webSocket) |> ignore
+                let getUserJson = JsonValue.Parse(usersDataStr)   
+                let respTweet: MessageType = {
+                    action = "OWN_TWEET_DATA"
+                    data = getUserTweets(getUserJson)
+                }
+                response <- Json.serializeEx JsonConfig respTweet
+                sendByWebSocket(response, webSocket) |> ignore
 
         | _ -> printfn "[Invalid Action] server no action match %s" msg
     with ex ->

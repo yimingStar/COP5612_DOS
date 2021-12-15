@@ -25,6 +25,8 @@ module MessageHandler =
     let mutable ownTweetList: TweetObject list = []
     let JsonConfig = JsonConfig.create(allowUntyped = true)
 
+    let mutable rsaPublicKey = ""
+    
     let clientWSActionDecoder(msg: string) =
         try
             let actionObj = Json.deserializeEx<MessageType> JsonConfig msg
@@ -44,6 +46,12 @@ module MessageHandler =
         
             | "NEW_TWEET_DATA" ->
                 printfn "[Recv response] Get NEW_TWEET_DATA %s\n" actionObj.data
+                let newTweet = Json.deserializeEx<TweetObject> JsonConfig actionObj.data
+                browsingTweetList <- [newTweet] @ browsingTweetList
+                
+            | "KEY_DATA" -> 
+                printfn "[Recv response] Get KEY_DATA receiving public key %s\n" actionObj.data
+                rsaPublicKey <- actionObj.data
 
             | "ERROR" ->
                 printfn "[Recv Error response]"

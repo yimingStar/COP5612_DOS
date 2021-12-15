@@ -22,6 +22,7 @@ open FSharp.Data.JsonExtensions
 
 open ServerTypes
 open System.Collections.Generic
+open System.Security.Cryptography
 
 let userDataPath = __SOURCE_DIRECTORY__ + "/data/users.json"
 let tweetDataPath = __SOURCE_DIRECTORY__ + "/data/tweets.json"
@@ -35,7 +36,8 @@ let loadedTweets = JsonValue.Load(tweetDataPath).Properties
 let loadedSetting = JsonValue.Load(settingPath) |> string
 let settingObj = Json.deserializeEx<ServerSettings> JsonConfig loadedSetting
 let mutable userConnectedMap = Map.empty // <userId, Akka path>
-
+let mutable rsaPublicKey = ""
+let mutable rsaPrivateKey = ""
 
 let deserializeUserData() =
     for user in loadedUserData do
@@ -74,6 +76,10 @@ let createErrors(errCode, content) =
     }
     respError
 
+let createKey() =
+    let rsaProvider = new RSACryptoServiceProvider(2048)
+    rsaPublicKey <- Convert.ToBase64String(rsaProvider.ExportCspBlob(false));
+    rsaPrivateKey <- Convert.ToBase64String(rsaProvider.ExportCspBlob(true));
 
 let sendByWebSocket(msg: string, webSocket: WebSocket) = 
     // the response needs to be converted to a ByteSegment
@@ -133,6 +139,14 @@ let serverWSActionDecoder(msg: string, webSocket: WebSocket) =
                 response <- Json.serializeEx JsonConfig resp
                 sendByWebSocket(response, webSocket) |> ignore
 
+                let mutable keyMsg: MessageType = {
+                    action = "KEY_DATA"
+                    data = rsaPublicKey
+                }
+
+                response <- Json.serializeEx JsonConfig keyMsg
+                sendByWebSocket(response, webSocket) |> ignore
+
         | "CONNECT" ->
             let data = Json.deserializeEx<CONNECTDATA> JsonConfig actionObj.data
             if data.userId = "" then
@@ -162,8 +176,14 @@ let serverWSActionDecoder(msg: string, webSocket: WebSocket) =
                     userConnectedMap <- userConnectedMap.Add(data.userId, webSocket)
                 with :? KeyNotFoundException as ex -> printfn "Exception! %A " (ex.Message) 
 
-                
                 response <- Json.serializeEx JsonConfig resp
+                sendByWebSocket(response, webSocket) |> ignore
+
+                let mutable keyMsg: MessageType = {
+                    action = "KEY_DATA"
+                    data = rsaPublicKey
+                }
+                response <- Json.serializeEx JsonConfig keyMsg
                 sendByWebSocket(response, webSocket) |> ignore
 
                 let getUserJson = JsonValue.Parse(usersDataStr)
@@ -233,7 +253,7 @@ let serverWSActionDecoder(msg: string, webSocket: WebSocket) =
                     action = "USER_DATA"
                     data = usersDataStr
                 }
-                
+
                 response <- Json.serializeEx JsonConfig resp
                 sendByWebSocket(response, webSocket) |> ignore
 
@@ -417,6 +437,7 @@ let app : WebPart =
 [<EntryPoint>]
 let main argv =
     printfn "Twitter Server engine started. Now listening..."
+    createKey()
     deserializeUserData()
     deserializeTweetData()
     startWebServer { defaultConfig with logger = Targets.create Verbose [||] } app

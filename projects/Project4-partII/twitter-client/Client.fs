@@ -4,9 +4,6 @@ open WebSharper
 open WebSharper.UI
 open WebSharper.UI.Templating
 open WebSharper.UI.Notation
-open WebSharper.UI.Html
-open WebSharper.UI.Client
-open WebSharper.JavaScript
 
 [<JavaScript>]
 module Templates =

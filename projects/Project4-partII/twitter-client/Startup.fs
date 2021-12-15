@@ -29,14 +29,17 @@ type Startup() =
                 context.Response.WriteAsync("Page not found"))
 
 module Program =
-    let BuildWebHost args =
+    let BuildWebHost(args, port) =
+        let hostURL = sprintf("http://localhost:%s") port
         WebHost
             .CreateDefaultBuilder(args)
+            .UseUrls(hostURL) 
             .UseStartup<Startup>()
             .Build()
 
     [<EntryPoint>]
     let main args =
         printfn "Twitter Client started."
-        BuildWebHost(args).Run()
+        let port = if args.Length > 1 then args.[1] else "5000"
+        BuildWebHost(args, port).Run()
         0

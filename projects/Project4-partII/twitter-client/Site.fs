@@ -83,7 +83,6 @@ module Site =
             div [] [client <@ Client.SubscribedListComponent(showSubscribed) @>]
         ]
     
-
     [<Website>]
     let Main =
         Application.MultiPage (fun ctx endpoint ->

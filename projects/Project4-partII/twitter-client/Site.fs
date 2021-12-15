@@ -53,9 +53,14 @@ module Site =
         ]
 
     let TweetListPage ctx =
+        let showOwnTweets = MessageHandler.ownTweetList.ToString()
+        let showBrowseTweets = MessageHandler.browsingTweetList.ToString()
         Templating.Main ctx EndPoint.TweetList "Tweet List" [
-            h1 [] [text "Tweet List"]
-            p [] [text "This is a template WebSharper client-server application."]
+            h1 [] [text "Own Tweet List"]
+            div [] [client <@ Client.OwnTweetListComponent(showOwnTweets) @>]
+
+            h1 [] [text "Browse Tweet List"]
+            div [] [client <@ Client.BrowseTweetListComponent(showBrowseTweets) @>]
         ]
     
 

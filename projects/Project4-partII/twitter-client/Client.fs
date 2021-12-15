@@ -10,7 +10,8 @@ open WebSharper.JavaScript
 
 [<JavaScript>]
 module Templates =
-    type MainTemplate = Templating.Template<"Main.html", ClientLoad.FromDocument, ServerLoad.WhenChanged>
+    type MainTemplate = Templating.Template<"./html/Main.html", ClientLoad.FromDocument, ServerLoad.WhenChanged>
+    type TweetListTemplate = Templating.Template<"./html/TweetList.html", ClientLoad.FromDocument, ServerLoad.WhenChanged>
 
 [<JavaScript>]
 module Client =
@@ -50,6 +51,20 @@ module Client =
                 }
                 |> Async.StartImmediate
             )
+            .RESPONSE(rvResponse.View)
+            .Doc()
+    
+    let OwnTweetListComponent (inputList) =
+        let rvResponse = Var.Create inputList
+        
+        Templates.MainTemplate.OwnTweetList()
+            .RESPONSE(rvResponse.View)
+            .Doc()
+
+    let BrowseTweetListComponent (inputList) =
+        let rvResponse = Var.Create inputList
+
+        Templates.MainTemplate.BrowseTweetList()
             .RESPONSE(rvResponse.View)
             .Doc()
         

@@ -25,7 +25,6 @@ module CallApi =
         async {
             do! Async.Sleep 500
             let mutable returnStr = ""
-            printfn "check if error exist %A" MessageHandler.errFlag
             if MessageHandler.errFlag = true then
                 MessageHandler.clearErrorFlag() 
                 returnStr <- MessageHandler.errorMsgObj.ToString()
@@ -50,7 +49,6 @@ module CallApi =
         async {
             do! Async.Sleep 500
             let mutable returnStr = ""
-            printfn "check if error exist %A" MessageHandler.errFlag
             if MessageHandler.errFlag = true then
                 MessageHandler.clearErrorFlag() 
                 returnStr <- MessageHandler.errorMsgObj.ToString()
@@ -61,9 +59,24 @@ module CallApi =
     
     [<Rpc>]
     let SendTweet input =
-        let R (s: string) = System.String(Array.rev(s.ToCharArray()))
-        WebSocketModule.Send(input) |> ignore
-        async {
-            return R input
+        let inputData: TWEET_RAW_DATA = {
+            userId = MessageHandler.myUserObj.userId
+            content = input
         }
-    
+
+        let sendRequest: MessageType = {
+            action = "TWEET"
+            data = Json.serializeEx JsonConfig inputData
+        }
+
+        WebSocketModule.Send(Json.serializeEx JsonConfig sendRequest) |> ignore
+        async {
+            do! Async.Sleep 500
+            let mutable returnStr = ""
+            if MessageHandler.errFlag = true then
+                MessageHandler.clearErrorFlag() 
+                returnStr <- MessageHandler.errorMsgObj.ToString()
+            else
+                returnStr <- MessageHandler.myUserObj.ToString()
+            return returnStr
+        }

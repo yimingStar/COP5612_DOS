@@ -11,8 +11,7 @@ open WebSharper.JavaScript
 [<JavaScript>]
 module Templates =
     type MainTemplate = Templating.Template<"./html/Main.html", ClientLoad.FromDocument, ServerLoad.WhenChanged>
-    type TweetListTemplate = Templating.Template<"./html/TweetList.html", ClientLoad.FromDocument, ServerLoad.WhenChanged>
-
+    
 [<JavaScript>]
 module Client =
     let SignUpComponent () =

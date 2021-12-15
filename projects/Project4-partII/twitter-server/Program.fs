@@ -34,7 +34,7 @@ let loadedUserData = JsonValue.Load(userDataPath).Properties
 let loadedTweets = JsonValue.Load(tweetDataPath).Properties
 let loadedSetting = JsonValue.Load(settingPath) |> string
 let settingObj = Json.deserializeEx<ServerSettings> JsonConfig loadedSetting
-// let mutable userConnectedMap = Map.empty // <userId, Akka path>
+let mutable userConnectedMap = Map.empty // <userId, Akka path>
 
 
 let deserializeUserData() =
@@ -158,13 +158,12 @@ let serverWSActionDecoder(msg: string, webSocket: WebSocket) =
                         data = usersDataStr
                     }
                     resp <- newResp
-                    // printfn "Receive CONNECT from userId %s on socket path %s" data.userId (sender.Path.ToString())
-                    // userConnectedMap <- userConnectedMap.Add(data.userId, sender.Path.ToString())
+                    printfn "Receive CONNECT from userId %s on by web socket" data.userId 
+                    userConnectedMap <- userConnectedMap.Add(data.userId, webSocket)
                 with :? KeyNotFoundException as ex -> printfn "Exception! %A " (ex.Message) 
 
                 
                 response <- Json.serializeEx JsonConfig resp
-                printfn "resp %A" response
                 sendByWebSocket(response, webSocket) |> ignore
 
                 let getUserJson = JsonValue.Parse(usersDataStr)
@@ -175,7 +174,6 @@ let serverWSActionDecoder(msg: string, webSocket: WebSocket) =
                 }
 
                 response <- Json.serializeEx JsonConfig respTweet
-                printfn "resp %A" response
                 sendByWebSocket(response, webSocket) |> ignore
 
                 let respTweet: MessageType = {
@@ -183,9 +181,72 @@ let serverWSActionDecoder(msg: string, webSocket: WebSocket) =
                     data = getBrowseTweets()
                 }
                 response <- Json.serializeEx JsonConfig respTweet
-                printfn "resp %A" response
                 sendByWebSocket(response, webSocket) |> ignore
+
+        | "TWEET" -> 
+            // 1. Create new Tweet obj, update tweet list
+            // 2. Update user tweet list
+            // 3. Broadcast to all suscribers
+
+            let data = Json.deserializeEx<TWEET_RAW_DATA> JsonConfig actionObj.data
+
+            // 1. Create new Tweet obj, update tweet list
+            let newNumTweets = settingObj.numTweets + 1 
+            let newTweetId = sprintf "%s%d" tweetIdPrefix newNumTweets
+
+            let newTweetObj: TweetObject = {
+                userId = data.userId
+                tweetId = newTweetId
+                content = data.content
+                hashTag = []
+                mention = []
+            }
+            
+            printfn ""
+            let tweetDataStr = Json.serializeEx JsonConfig newTweetObj 
+            tweetDataMap <- tweetDataMap.Add(newTweetId, tweetDataStr)
+            settingObj.numTweets <- newNumTweets 
+            
+            let mutable usersDataStr = ""
+            try
+                // 2. Update user tweet list
+                usersDataStr <- userDataMap |> Map.find data.userId
+                let userObj = Json.deserializeEx<UserObject> JsonConfig (usersDataStr) 
+                userObj.tweets <- userObj.tweets @ [newTweetId]
+                usersDataStr <- Json.serializeEx JsonConfig userObj
                 
+                // 3. Broadcast to subscribers
+                for subsribersId in userObj.subscribers do
+                    printfn "%s" subsribersId
+                    if userConnectedMap.ContainsKey(subsribersId) then
+                        let subscriberWS = userConnectedMap.[subsribersId]
+
+                        let mutable tweetMsg: MessageType = {
+                            action = "NEW_TWEET_DATA"
+                            data = tweetDataStr
+                        }
+
+                        response <- Json.serializeEx JsonConfig tweetMsg
+                        sendByWebSocket(response, subscriberWS) |> ignore
+
+            with :? KeyNotFoundException as ex -> printfn "Exception! %A " (ex.Message) 
+
+            let mutable resp: MessageType = {
+                action = "USER_DATA"
+                data = usersDataStr
+            }
+
+            response <- Json.serializeEx JsonConfig resp
+            sendByWebSocket(response, webSocket) |> ignore
+
+            let getUserJson = JsonValue.Parse(usersDataStr)   
+            let respTweet: MessageType = {
+                action = "OWN_TWEET_DATA"
+                data = getUserTweets(getUserJson)
+            }
+            response <- Json.serializeEx JsonConfig respTweet
+            sendByWebSocket(response, webSocket) |> ignore
+
         | _ -> printfn "[Invalid Action] server no action match %s" msg
     with ex ->
         printfn "exeption decoding client actions, ex: %A" ex

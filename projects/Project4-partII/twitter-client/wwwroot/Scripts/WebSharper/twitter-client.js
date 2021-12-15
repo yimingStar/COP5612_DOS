@@ -37,7 +37,7 @@
    $1:R
   }),_this))),(p=Handler.CompleteHoles(b.k,b.h,[]),(i=new TemplateInstance.New(p[1],_twitterclient_Templates.owntweetlist(p[0])),b.i=i,i))).get_Doc();
  };
- Client.TweetComponent$47$20=function(rvResponse)
+ Client.TweetComponent$46$20=function(rvResponse)
  {
   return function(e)
   {
@@ -76,7 +76,7 @@
    $1:R
   }),_this))),(p=Handler.CompleteHoles(b.k,b.h,[["texttoreverse",0]]),(i=new TemplateInstance.New(p[1],_twitterclient_Templates.mainform(p[0])),b.i=i,i))).get_Doc();
  };
- Client.SignInComponent$34$20=function(rvResponse)
+ Client.SignInComponent$33$20=function(rvResponse)
  {
   return function(e)
   {
@@ -115,7 +115,7 @@
    $1:R
   }),_this))),(p=Handler.CompleteHoles(b.k,b.h,[["textuserid",0]]),(i=new TemplateInstance.New(p[1],_twitterclient_Templates.signinform(p[0])),b.i=i,i))).get_Doc();
  };
- Client.SignUpComponent$21$20=function(rvResponse)
+ Client.SignUpComponent$20$20=function(rvResponse)
  {
   return function(e)
   {

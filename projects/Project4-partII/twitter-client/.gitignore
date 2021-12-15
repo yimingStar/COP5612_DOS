@@ -280,17 +280,17 @@ paket-files/
 .idea/
 *.sln.iml
 
-# Coverage Report
-MyProject_coverage.xml
-© 2021 GitHub, Inc.
-Terms
-Privacy
-Security
-Status
-Docs
-Contact GitHub
-Pricing
-API
-Training
-Blog
-About
+# # Coverage Report
+# MyProject_coverage.xml
+# © 2021 GitHub, Inc.
+# Terms
+# Privacy
+# Security
+# Status
+# Docs
+# Contact GitHub
+# Pricing
+# API
+# Training
+# Blog
+# About
